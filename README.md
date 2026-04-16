@@ -1,43 +1,88 @@
-# EcoCampus: Smart Campus Waste Management System ♻️
+# Campus Waste Management System
 
-EcoCampus is an interactive, full-stack campus garbage monitoring and gamified reporting platform. It was built to maintain a cleaner campus environment by incentivizing students to report and document garbage issues. 
+## Overview
+The Campus Waste Management System (EcoCampus) is a comprehensive, full-stack web application designed to facilitate efficient garbage reporting and monitoring within university environments. The platform incentivizes students to actively participate in maintaining a clean campus through a transparent reporting mechanism and an integrated gamification system.
 
-## ✨ Key Features
-- **OTP Mobile Authentication**: Secure, mobile-first phone number verification for students with daily tracking limits.
-- **Role-based Dashboards**: Separated experiences for Students (Phone OTP) and Staff/Coordinators (Secure Email/Password).
-- **Gamification Engine**: An achievement-based point system rewarding students 5 points for every valid garbage photo upload, enforcing soft maximum limits of 50 points/day to prevent spam and abuse.
-- **Interactive UI**: Rich modern React interfaces using custom glassmorphism styles, live notifications, and real-time report search tables. 
+## Project Architecture
+The system follows a typical dual-layer client-server architecture, divided into distinct frontend and backend environments.
 
-## 🛠️ Technology Stack
-- **Frontend**: React, Vite, Lucide-React 
-- **Backend API**: Node.js, Express, strict OTP tracking, JWT token session management
-- **Database**: PostgreSQL
-- **Security**: Strict route limits, 24-hour token bounds, `bcrypt` password checks, input validations.
+- **Frontend Environment**: Built with React and Vite, the user interface provides dynamic routing, state context management, and responsive data visualizations.
+- **Backend API**: Engineered using Node.js and Express, securely exposing RESTful endpoints.
+- **Database Layer**: Handled using PostgreSQL, guaranteeing relational consistency across user identities, reports, and gamification points.
 
-## 🚀 Setup & Installation
+## Core Capabilities Framework
+The application implements highly specialized functionalities segmented by user roles to ensure data integrity and streamlined workflows.
 
-### 1. Database Initialization
-Ensure that your local PostgreSQL instance is running on `localhost:5432` with the `eco_campus` database configured in your `.env`.
-To run the setup script and apply the schemas:
-```bash
-node backend/scripts/init_db.js
-```
+### Dual-Layer Authentication System
+1. **Student Access (OTP Flow)**
+   - Prioritizes frictionless access using 10-digit mobile number validation.
+   - Enforces a 5-minute expiry window and strict retry limits on temporary passcodes.
+2. **Staff/Coordinator Access (Credential Flow)**
+   - Utilizes standard email and password authentication verified via secure hashing algorithms.
+   - Implements JSON Web Token (JWT) session generation, enforcing strict 24-hour active session expiration boundaries.
 
-### 2. Backend API
-1. Open a terminal to run the Express API:
-```bash
-node backend/server.js
-```
-The server will boot up via the Node interpreter at `http://localhost:8000`.
+### Gamification and Limits Enforcement
+To prevent abuse while motivating students, the system utilizes an internal points ledger.
+- **Micro-rewards**: Users are credited 5 points for every valid, uploaded photograph depicting a campus waste issue.
+- **Thresholds**: The server-side controller restricts accumulation to a maximum of 50 points per day, and 500 points per month per user identity.
+- **Engagement Dashboard**: The frontend continuously tracks this progression to display objective metric bars, keeping users engaged with their impact over time.
 
-### 3. Frontend Development
-1. Start the Vite React development server:
-```bash
-npm run dev
-```
-Navigate to `http://localhost:5173`. 
+### Report Management Component
+- Enables geo-tagged and categorical classification of waste types (e.g., Organic, Plastic, E-Waste).
+- Provides campus coordinators with comprehensive metric views, including real-time warnings for High-Priority hazard resolutions via Live Notification Contexts.
 
-### Testing Credentials (Standalone Fallback)
-If the Postgres server is offline, the React `AuthContext` falls back gracefully into an offline UI demo mode.
-- **Students**: Use any 10-digit number. The UI will hint the generated OTP to test authentication.
-- **Staff Mock User**: `admin@campus.edu` with the password `demo1234`.
+## Technology Stack Specifications
+
+### Frontend
+- **Framework**: React
+- **Build Engine**: Vite
+- **Styling Architecture**: Vanilla CSS deploying modern Glassmorphism UX methodologies
+- **Routing Engine**: React Router DOM
+- **UI Components**: Lucide React
+
+### Backend
+- **Runtime Environment**: Node.js
+- **Server Framework**: Express.js
+- **Session Security**: JsonWebToken (JWT) & bcryptjs
+- **Database Driver**: pg (node-postgres)
+- **Media Transmissions**: Multer for multipart form and binary data operations
+
+## Setup and Deployment Guidelines
+
+### Prerequisites
+Before cloning the repository, ensure your development environment satisfies the following requirements:
+- Node.js environment configured natively
+- Node Package Manager (NPM)
+- PostgreSQL server active on the default TCP port (5432)
+
+### Local Initialization Sequence
+
+1. **Database Schema Configuration**
+   Ensure an empty PostgreSQL database named `eco_campus` is accessible, and database credentials are provided correctly in the environment configuration. Execute the database initialization script to apply relational schema constraints:
+   ```bash
+   node backend/scripts/init_db.js
+   ```
+
+2. **Backend Service Bootstrapping**
+   Launch the Express listener to supply REST APIs to the client layer:
+   ```bash
+   node backend/server.js
+   ```
+   The backend daemon will intercept requests continuously at `http://localhost:8000/`.
+
+3. **Frontend Service Bootstrapping**
+   In a secondary terminal context, start the Vite development server:
+   ```bash
+   cd frontend
+   npm run dev
+   ```
+   Access the graphical user interface securely via `http://localhost:5173`.
+
+### Fallback Demonstration Diagnostics
+If the local PostgreSQL database service is unresponsive or absent from the execution environment, the application's React Contexts aggressively intercept network failures and gracefully revert the runtime structure into an offline evaluation state.
+- **Testing Student Interfaces**: Submit any valid 10-digit number. A pseudo-passcode will instantly populate directly within the client interface to bypass the requirement.
+- **Testing Administrative Interfaces**: Authenticate utilizing the mock credentials `admin@campus.edu` with the password `demo1234`.
+
+---
+
+This project establishes foundational scalability for environmental accountability tracking within heavily structured institutional campuses. For detailed API endpoint specifications, review the Express router abstractions contained within the respective backend directories.
