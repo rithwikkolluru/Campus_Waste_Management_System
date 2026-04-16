@@ -10,6 +10,38 @@ The system follows a typical dual-layer client-server architecture, divided into
 - **Backend API**: Engineered using Node.js and Express, securely exposing RESTful endpoints.
 - **Database Layer**: Handled using PostgreSQL, guaranteeing relational consistency across user identities, reports, and gamification points.
 
+## Repository Structure
+
+The project has been decoupled into distinct operational domains, containing isolated package dependencies for improved maintainability and secure deployment pipelines.
+
+```text
+Campus_Waste_Management_System/
+│
+├── backend/                  # Node.js Server Environment
+│   ├── config/               # Database and environment configurations
+│   ├── controllers/          # Business logic handlers (Auth, Reporting, KPIs)
+│   ├── middleware/           # XSS, logging, and JWT interceptors
+│   ├── routes/               # Express routing architectures
+│   ├── scripts/              # Schema generation scripts (init_db.js)
+│   ├── server.js             # Core Express listener daemon
+│   └── package.json          # Isolated backend dependencies (express, pg, bcrypt)
+│
+├── frontend/                 # React Client Environment
+│   ├── public/               # Static assets, SVG icons, generic graphics
+│   ├── src/                  # React Source Code
+│   │   ├── components/       # Reusable UI elements (Sidebars, Toasts)
+│   │   ├── contexts/         # Application State (AuthContext, Notifications)
+│   │   ├── pages/            # Main Views (Role-based Dashboards, OTP log on)
+│   │   ├── services/         # Client API transaction and abstraction layer
+│   │   ├── utils/            # Validation helpers and security sanitization
+│   │   └── App.jsx           # Global Router definitions
+│   ├── index.html            # Vite HTML mount template
+│   ├── vite.config.js        # Vite Build system definitions
+│   └── package.json          # Isolated frontend dependencies (react, lucide)
+│
+└── README.md                 # Deployment & Architectural documentation
+```
+
 ## Core Capabilities Framework
 The application implements highly specialized functionalities segmented by user roles to ensure data integrity and streamlined workflows.
 
