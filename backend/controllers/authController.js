@@ -10,6 +10,53 @@ const MAX_OTP_RETRIES = 3;
 const generateOTP = () => Math.floor(1000 + Math.random() * 9000).toString();
 
 /**
+ * Register a new user (Email + Password)
+ */
+exports.register = async (req, res) => {
+  const { name, email, phone, password, role } = req.body;
+
+  if (!name || !email || !password) {
+    return res.status(400).json({ status: 'error', message: 'Name, email and password are required.' });
+  }
+
+  try {
+    // Check if email already exists
+    const existing = await db.query('SELECT id FROM users WHERE email = $1', [email]);
+    if (existing.rows.length > 0) {
+      return res.status(409).json({ status: 'error', message: 'Email already registered.' });
+    }
+
+    // Check if phone already exists
+    if (phone) {
+      const existingPhone = await db.query('SELECT id FROM users WHERE phone = $1', [phone]);
+      if (existingPhone.rows.length > 0) {
+        return res.status(409).json({ status: 'error', message: 'Phone number already registered.' });
+      }
+    }
+
+    // Hash password
+    const hashed = await bcrypt.hash(password, 10);
+
+    // Insert new user
+    const result = await db.query(
+      'INSERT INTO users (name, email, phone, password, role) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, email, role',
+      [name, email, phone || null, hashed, role || 'student']
+    );
+
+    console.log(`✅ New user registered: ${email}`);
+
+    res.status(201).json({
+      status: 'success',
+      message: 'Account created successfully!',
+      user: result.rows[0]
+    });
+  } catch (err) {
+    console.error('Register error:', err);
+    res.status(500).json({ status: 'error', message: 'Registration failed.' });
+  }
+};
+
+/**
  * Request OTP (Login/Register via Phone)
  */
 exports.requestOtp = async (req, res) => {
@@ -25,29 +72,28 @@ exports.requestOtp = async (req, res) => {
 
     // Check if user exists
     const result = await db.query('SELECT * FROM users WHERE phone = $1', [phone]);
-    
+
     if (result.rows.length === 0) {
-      // Create user with student role, phone, and OTP
+      // Create new user with phone and OTP
       await db.query(
         'INSERT INTO users (phone, role, otp, otp_expiry, otp_retries) VALUES ($1, $2, $3, $4, 0)',
         [phone, 'student', otp, expiry]
       );
     } else {
-      // Update existing user's OTP
+      // Update existing user OTP
       await db.query(
         'UPDATE users SET otp = $1, otp_expiry = $2, otp_retries = 0 WHERE phone = $3',
         [otp, expiry, phone]
       );
     }
 
-    // In a real application, you would send the SMS via Twilio or similar here.
+    // In production replace this with Twilio SMS
     console.log(`[SMS MOCK] Sent OTP ${otp} to phone ${phone}`);
 
     res.json({
       status: 'success',
       message: `OTP sent to ${phone} successfully.`,
-      // For demo purposes, we send it in the response so it's easy to test without SMS:
-      otp_hint: otp 
+      otp_hint: otp  // Remove this in production
     });
   } catch (err) {
     console.error('Error during OTP request:', err);
@@ -60,6 +106,10 @@ exports.requestOtp = async (req, res) => {
  */
 exports.verifyOtp = async (req, res) => {
   const { phone, otp } = req.body;
+
+  if (!phone || !otp) {
+    return res.status(400).json({ status: 'error', message: 'Phone and OTP are required.' });
+  }
 
   try {
     const result = await db.query('SELECT * FROM users WHERE phone = $1', [phone]);
@@ -75,7 +125,7 @@ exports.verifyOtp = async (req, res) => {
     }
 
     // Check expiry
-    if (new Date() > new Date(user.otp_expiry)) {
+    if (!user.otp_expiry || new Date() > new Date(user.otp_expiry)) {
       return res.status(401).json({ status: 'error', message: 'OTP has expired. Please request a new one.' });
     }
 
@@ -85,10 +135,12 @@ exports.verifyOtp = async (req, res) => {
       return res.status(401).json({ status: 'error', message: 'Invalid OTP.' });
     }
 
-    // Success - Clear OTP and generate JWT
-    await db.query('UPDATE users SET otp = NULL, otp_expiry = NULL, otp_retries = 0 WHERE phone = $1', [phone]);
+    // Success — clear OTP and generate JWT
+    await db.query(
+      'UPDATE users SET otp = NULL, otp_expiry = NULL, otp_retries = 0 WHERE phone = $1',
+      [phone]
+    );
 
-    // Token expires in 24 hours per constraints
     const token = jwt.sign(
       { id: user.id, phone: user.phone, role: user.role },
       JWT_SECRET,
@@ -99,11 +151,11 @@ exports.verifyOtp = async (req, res) => {
       status: 'success',
       token,
       user: {
-        id: user.id,
-        name: user.name,
-        phone: user.phone,
-        email: user.email,
-        role: user.role,
+        id:           user.id,
+        name:         user.name,
+        phone:        user.phone,
+        email:        user.email,
+        role:         user.role,
         total_points: user.total_points
       },
     });
@@ -114,35 +166,39 @@ exports.verifyOtp = async (req, res) => {
 };
 
 /**
- * Sign In to user account (Admin / Coordinator)
+ * Staff Login (Admin / Coordinator) via Email + Password
  */
 exports.login = async (req, res) => {
   const { email, password } = req.body;
 
+  if (!email || !password) {
+    return res.status(400).json({ status: 'error', message: 'Email and password are required.' });
+  }
+
   try {
-    // Find user
-    const result = await db.query('SELECT * FROM users WHERE email = $1 AND role IN ($2, $3)', [email, 'admin', 'coordinator']);
+    const result = await db.query(
+      "SELECT * FROM users WHERE email = $1 AND role IN ('admin', 'coordinator')",
+      [email]
+    );
+
     if (result.rows.length === 0) {
       return res.status(401).json({ status: 'error', message: 'Invalid email or password. Access restricted to Staff.' });
     }
 
     const user = result.rows[0];
 
-    // Verify password (Mock check or proper bcrypt depending on DB state)
-    // If DB is fresh, there are no hashed passwords. 
-    // For demo purposes, let's allow 'demo1234' on all emails if there's no password set, OR check bcrypt.
+    // Allow demo password if no password set, otherwise check bcrypt
     let isMatch = false;
     if (!user.password && password === 'demo1234') {
-        isMatch = true;
+      isMatch = true;
     } else if (user.password) {
-        isMatch = await bcrypt.compare(password, user.password);
+      isMatch = await bcrypt.compare(password, user.password);
     }
 
     if (!isMatch) {
       return res.status(401).json({ status: 'error', message: 'Invalid email or password.' });
     }
 
-    // Generate token
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role },
       JWT_SECRET,
@@ -170,41 +226,48 @@ exports.login = async (req, res) => {
  * Get user stats (Gamification Dashboard)
  */
 exports.getStats = async (req, res) => {
-  const { id } = req.params; // pass user id in params
+  const { id } = req.params;
+
+  if (!id) {
+    return res.status(400).json({ status: 'error', message: 'User ID is required.' });
+  }
+
   try {
     const userRes = await db.query('SELECT total_points FROM users WHERE id = $1', [id]);
-    if (userRes.rows.length === 0) return res.status(404).json({ status: 'error', message: 'User not found' });
-    
+    if (userRes.rows.length === 0) {
+      return res.status(404).json({ status: 'error', message: 'User not found.' });
+    }
+
     const totalPoints = userRes.rows[0].total_points;
 
     const dailyPointsRes = await db.query(`
-      SELECT COALESCE(SUM(points), 0) as daily_total
+      SELECT COALESCE(SUM(points), 0) AS daily_total
       FROM points_logs
       WHERE user_id = $1 AND DATE(created_at) = CURRENT_DATE
     `, [id]);
     const dailyTotal = parseInt(dailyPointsRes.rows[0].daily_total);
 
     const monthlyPointsRes = await db.query(`
-      SELECT COALESCE(SUM(points), 0) as monthly_total
+      SELECT COALESCE(SUM(points), 0) AS monthly_total
       FROM points_logs
-      WHERE user_id = $1 AND EXTRACT(MONTH FROM created_at) = EXTRACT(MONTH FROM CURRENT_DATE)
-      AND EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM CURRENT_DATE)
+      WHERE user_id = $1
+        AND EXTRACT(MONTH FROM created_at) = EXTRACT(MONTH FROM CURRENT_DATE)
+        AND EXTRACT(YEAR  FROM created_at) = EXTRACT(YEAR  FROM CURRENT_DATE)
     `, [id]);
     const monthlyTotal = parseInt(monthlyPointsRes.rows[0].monthly_total);
 
     res.json({
       status: 'success',
       stats: {
-        total_points: totalPoints,
-        daily_points: dailyTotal,
-        monthly_points: monthlyTotal,
-        max_daily: 50,
-        max_monthly: 500,
-        remaining_daily: Math.max(0, 50 - dailyTotal),
+        total_points:      totalPoints,
+        daily_points:      dailyTotal,
+        monthly_points:    monthlyTotal,
+        max_daily:         50,
+        max_monthly:       500,
+        remaining_daily:   Math.max(0, 50  - dailyTotal),
         remaining_monthly: Math.max(0, 500 - monthlyTotal)
       }
     });
-
   } catch (err) {
     console.error('Error getting stats:', err);
     res.status(500).json({ status: 'error', message: 'Failed to get stats.' });
