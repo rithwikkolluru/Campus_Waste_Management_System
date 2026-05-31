@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
 import {
   LayoutDashboard, AlertTriangle, MapPin, Bell, Settings,
-  LogOut, Recycle, ChevronDown, Menu, X
+  LogOut, Recycle, ChevronDown, Menu, X, Sun, Moon
 } from 'lucide-react';
 import './Sidebar.css';
 
@@ -39,6 +39,17 @@ export default function Sidebar() {
   const { unreadCount }      = useNotifications();
   const [collapsed, setCollapsed]   = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [theme, setTheme] = useState(localStorage.getItem('eco_theme') || 'dark');
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    localStorage.setItem('eco_theme', newTheme);
+  };
 
   const items = NAV_ITEMS[user?.role] || [];
 
@@ -115,6 +126,10 @@ export default function Sidebar() {
         {/* Bottom */}
         <div className="sidebar-bottom">
           {!collapsed && <span className="sidebar-section-label">Account</span>}
+          <button className="sidebar-nav-item" onClick={toggleTheme} id="theme-toggle">
+            {theme === 'dark' ? <Sun size={18} strokeWidth={1.8} /> : <Moon size={18} strokeWidth={1.8} />}
+            {!collapsed && <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>}
+          </button>
           <button className="sidebar-nav-item logout-btn" onClick={handleLogout} id="logout-btn">
             <LogOut size={18} strokeWidth={1.8} />
             {!collapsed && <span>Sign Out</span>}

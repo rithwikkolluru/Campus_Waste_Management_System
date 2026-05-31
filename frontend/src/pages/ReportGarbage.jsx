@@ -6,6 +6,7 @@ import { useNotifications } from '../contexts/NotificationContext';
 import { Upload, MapPin, X, Camera, FileText, Send, ArrowLeft, Star } from 'lucide-react';
 import { validateImageFile, validateReportForm } from '../utils/validation';
 import { generateReportId } from '../utils/helpers';
+import usePoints from '../hooks/usePoints';
 import './Dashboard.css';
 
 const ZONES = [
@@ -18,6 +19,25 @@ const ZONES = [
 ];
 
 const WASTE_TYPES = ['Organic', 'Plastic', 'Paper', 'Glass', 'E-Waste', 'Mixed', 'Hazardous'];
+
+const compressImage = (file) => {
+  return new Promise((resolve) => {
+    const canvas = document.createElement('canvas');
+    const img = new Image();
+    img.onload = () => {
+      const maxWidth = 800;
+      const ratio = Math.min(maxWidth / img.width, 1);
+      canvas.width = img.width * ratio;
+      canvas.height = img.height * ratio;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob((blob) => {
+        resolve(new File([blob], file.name, { type: 'image/jpeg' }));
+      }, 'image/jpeg', 0.7);
+    };
+    img.src = URL.createObjectURL(file);
+  });
+};
 
 export default function ReportGarbage() {
   const navigate    = useNavigate();
@@ -34,6 +54,8 @@ export default function ReportGarbage() {
   const [success, setSuccess]   = useState(false);
   const [reportResult, setReportResult] = useState({ id: '', points: 0 });
   const { notify } = useNotifications();
+  const token = localStorage.getItem('eco_token');
+  const { refreshPoints } = usePoints(token);
 
   const handleFile = (file) => {
     if(!file) return;
@@ -70,24 +92,33 @@ export default function ReportGarbage() {
        formData.append('waste_type', wasteType);
        formData.append('priority', priority.toLowerCase());
        formData.append('user_id', user?.id || 1);
-       if (fileObj) formData.append('image', fileObj);
+       if (fileObj) {
+         const compressed = await compressImage(fileObj);
+         formData.append('image', compressed);
+       }
 
-       const res = await fetch('http://localhost:8000/api/reports', {
+       const res = await fetch('http://localhost:8000/api/reports/submit', {
          method: 'POST',
          headers: {
-           'Authorization': `Bearer ${localStorage.getItem('eco_token')}`
+           'Authorization': `Bearer ${token}`
          },
          body: formData
        });
        const data = await res.json();
        if(!res.ok) throw new Error(data.message || 'Submit failed');
        
-       setReportResult({ id: `RPT-00${data.report.id}`, points: data.points_earned || 5 });
+       setReportResult({ 
+         id: `RPT-00${data.reportId}`, 
+         points: data.pointsEarned || 0,
+         photoPoints: data.photoPointsEarned || 0,
+         reportPoints: data.reportPointsEarned || 0
+       });
        
        // Update user context total points globally
-       if (data.points_earned && user) {
-          setUser({ ...user, total_points: (user.total_points || 0) + data.points_earned });
+       if (data.pointsEarned && user) {
+          setUser({ ...user, total_points: (user.total_points || 0) + data.pointsEarned });
        }
+       refreshPoints();
     } catch(err) {
        console.warn('Backend unavailable, using mock submission', err.message);
        // Mock fallback
@@ -293,14 +324,21 @@ export default function ReportGarbage() {
               <p>Great job! Your contribution helps keep the campus clean.</p>
               
               {reportResult.points > 0 && (
-                 <div style={{ margin: '16px auto', padding: '12px 20px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', gap: '8px', color: 'var(--accent-green)', fontWeight: 'bold' }}>
-                    <Star fill="currentColor" size={20} />
-                    You earned {reportResult.points} Points!
+                 <div style={{ margin: '16px auto', padding: '12px 20px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', color: 'var(--accent-green)', fontWeight: 'bold' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.2rem' }}>
+                      <Star fill="currentColor" size={20} />
+                      You earned {reportResult.points} Points!
+                    </div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 'normal', color: 'var(--accent-green-light)' }}>
+                      {reportResult.photoPoints > 0 ? `${reportResult.photoPoints} pts for photo + ` : ''}
+                      {reportResult.reportPoints} pts for report
+                      {reportResult.photoPoints > 0 ? ` = ${reportResult.points} points` : ''}
+                    </div>
                  </div>
               )}
               {reportResult.points === 0 && (
                  <div style={{ margin: '16px auto', padding: '12px 20px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                    You have reached your daily or monthly points limit, but your photo was still uploaded!
+                    Photo saved! Daily points limit reached, no points awarded today but your report helps keep campus clean!
                  </div>
               )}
 

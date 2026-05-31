@@ -109,8 +109,16 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('eco_token');
   };
 
+  const googleLogin = (userData, token) => {
+    setUser(userData);
+    localStorage.setItem('eco_user', JSON.stringify(userData));
+    localStorage.setItem('eco_token', token);
+    localStorage.setItem('eco_login_time', Date.now().toString());
+  };
+
+
   return (
-    <AuthContext.Provider value={{ user, requestOtp, login, loginStaff, logout, setUser }}>
+    <AuthContext.Provider value={{ user, requestOtp, login, loginStaff, logout, googleLogin, setUser }}>
       {children}
     </AuthContext.Provider>
   );

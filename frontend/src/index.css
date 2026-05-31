@@ -57,6 +57,24 @@
   color: var(--text-primary);
 }
 
+[data-theme='light'] {
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-card: rgba(255, 255, 255, 0.85);
+  --bg-card-hover: rgba(255, 255, 255, 0.95);
+  --glass-border: rgba(0, 0, 0, 0.08);
+  --glass-border-hover: rgba(16, 185, 129, 0.35);
+
+  --text-primary: #0f172a;
+  --text-secondary: rgba(15, 23, 42, 0.75);
+  --text-muted: rgba(15, 23, 42, 0.5);
+
+  --gradient-hero: radial-gradient(ellipse 80% 60% at 50% -20%, rgba(16, 185, 129, 0.08) 0%, transparent 60%),
+                   radial-gradient(ellipse 50% 50% at 80% 80%, rgba(59, 130, 246, 0.04) 0%, transparent 50%),
+                   #f8fafc;
+  --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
 /* ===================== RESET ======================== */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; }

@@ -3,6 +3,7 @@ const express = require('express');
 const cors    = require('cors');
 const morgan  = require('morgan');
 const path    = require('path');
+const compression = require('compression');
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -10,6 +11,7 @@ const { xssCleaner } = require('./middleware/xssMiddleware');
 
 // Enable CORS and JSON parsing
 app.use(cors());
+app.use(compression());
 app.use(express.json());
 app.use(xssCleaner);
 app.use(morgan('dev'));
@@ -27,12 +29,14 @@ const authRoutes   = require('./routes/authRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const zoneRoutes    = require('./routes/zoneRoutes');
 const staffRoutes   = require('./routes/staffRoutes');
+const adminRoutes   = require('./routes/adminRoutes');
 
 // API Routes
 app.use('/api/auth',    authRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/zones',   zoneRoutes);
 app.use('/api/staff',   staffRoutes);
+app.use('/api/admin',   adminRoutes);
 
 // Catch 404 - Not Found
 app.use((req, res) => {

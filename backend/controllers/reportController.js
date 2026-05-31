@@ -1,4 +1,7 @@
 const db = require('../config/db');
+const pool = db.pool;
+const { awardPoints } = require('./rewardsController');
+
 
 const VALID_STATUSES = ['reported', 'under_review', 'assigned', 'in_progress', 'resolved'];
 
@@ -48,95 +51,87 @@ exports.getAllReports = async (req, res) => {
  * Submit a new garbage report
  */
 exports.submitReport = async (req, res) => {
-  const { zone_id, description, waste_type, priority, user_id } = req.body;
-  const image_url = req.file ? `/uploads/${req.file.filename}` : null;
-
-  // Validate required fields
-  if (!user_id) {
-    return res.status(400).json({ status: 'error', message: 'User ID is required. Please log in again.' });
-  }
-  if (!zone_id) {
-    return res.status(400).json({ status: 'error', message: 'Zone is required.' });
-  }
-  if (!description || description.trim().length === 0) {
-    return res.status(400).json({ status: 'error', message: 'Description is required.' });
-  }
-
-  // Validate priority value
-  const validPriorities = ['low', 'medium', 'high'];
-  const finalPriority = validPriorities.includes(priority) ? priority : 'low';
-
-  const MAX_DAILY        = 50;
-  const MAX_MONTHLY      = 500;
-  const POINTS_PER_UPLOAD = 5;
+  const dbClient = await pool.connect();
 
   try {
-    // Use a transaction so everything saves together or nothing does
-    await db.query('BEGIN');
+    await dbClient.query('BEGIN');
 
-    // 1. Insert the report
-    const result = await db.query(
-      `INSERT INTO reports (user_id, zone_id, description, waste_type, priority, image_url, status)
-       VALUES ($1, $2, $3, $4, $5, $6, 'reported')
-       RETURNING *`,
-      [user_id, zone_id, description.trim(), waste_type || 'general', finalPriority, image_url]
-    );
-    const newReport = result.rows[0];
+    const { location, waste_type, description, priority, zone_id } = req.body;
+    const userId = req.user.userId || req.user.id;
 
-    // 2. Log the initial status
-    await db.query(
-      'INSERT INTO report_logs (report_id, new_status, changed_by) VALUES ($1, $2, $3)',
-      [newReport.id, 'reported', user_id]
+    // Insert report
+    const reportResult = await dbClient.query(
+      `INSERT INTO reports
+        (user_id, zone_id, description, waste_type, priority, status)
+       VALUES ($1, $2, $3, $4, $5, 'reported')
+       RETURNING id`,
+      [userId, zone_id || 1, description, waste_type || 'general', priority || 'low']
     );
 
-    // 3. Calculate points
-    const dailyPointsRes = await db.query(`
-      SELECT COALESCE(SUM(points), 0) AS daily_total
-      FROM points_logs
-      WHERE user_id = $1 AND DATE(created_at) = CURRENT_DATE
-    `, [user_id]);
-    const dailyTotal = parseInt(dailyPointsRes.rows[0].daily_total);
+    const reportId = reportResult.rows[0].id;
+    let photoUrl = null;
+    let totalPointsEarned = 0;
 
-    const monthlyPointsRes = await db.query(`
-      SELECT COALESCE(SUM(points), 0) AS monthly_total
-      FROM points_logs
-      WHERE user_id = $1
-        AND EXTRACT(MONTH FROM created_at) = EXTRACT(MONTH FROM CURRENT_DATE)
-        AND EXTRACT(YEAR  FROM created_at) = EXTRACT(YEAR  FROM CURRENT_DATE)
-    `, [user_id]);
-    const monthlyTotal = parseInt(monthlyPointsRes.rows[0].monthly_total);
+    let photoPointsEarned = 0;
+    // Save photo if uploaded
+    if (req.file) {
+      photoUrl = `/uploads/waste-photos/${req.file.filename}`;
 
-    let pointsToAward = 0;
-    if (dailyTotal < MAX_DAILY && monthlyTotal < MAX_MONTHLY) {
-      pointsToAward = Math.min(POINTS_PER_UPLOAD, MAX_DAILY - dailyTotal, MAX_MONTHLY - monthlyTotal);
+      await dbClient.query(
+        `INSERT INTO report_photos
+          (report_id, user_id, file_path, file_url, original_name, file_size, waste_category)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [reportId, userId, req.file.path, photoUrl,
+         req.file.originalname, req.file.size, waste_type]
+      );
+
+      // Award photo points
+      const photoPoints = await awardPoints(userId, 5, 'photo_upload', reportId, dbClient);
+      if (photoPoints.awarded) {
+        totalPointsEarned += 5;
+        photoPointsEarned = 5;
+      }
     }
 
-    // 4. Award points if eligible
-    if (pointsToAward > 0) {
-      await db.query(
-        'INSERT INTO points_logs (user_id, points, report_id) VALUES ($1, $2, $3)',
-        [user_id, pointsToAward, newReport.id]
-      );
-      await db.query(
-        'UPDATE users SET total_points = total_points + $1 WHERE id = $2',
-        [pointsToAward, user_id]
-      );
+    let reportPointsEarned = 0;
+    // Award report submission points
+    const reportPoints = await awardPoints(userId, 10, 'report_submit', reportId, dbClient);
+    if (reportPoints.awarded) {
+      totalPointsEarned += 10;
+      reportPointsEarned = 10;
     }
 
-    await db.query('COMMIT');
+    // Get updated total
+    const userResult = await dbClient.query(
+      'SELECT total_points FROM users WHERE id = $1',
+      [userId]
+    );
 
-    console.log(`✅ Report #${newReport.id} submitted by user ${user_id} — ${pointsToAward} points awarded`);
+    await dbClient.query('COMMIT');
 
-    res.status(201).json({
-      status:        'success',
-      message:       'Report submitted successfully!',
-      report:        newReport,
-      points_earned: pointsToAward
+    res.json({
+      success: true,
+      reportId,
+      photoUrl,
+      pointsEarned: totalPointsEarned,
+      photoPointsEarned,
+      reportPointsEarned,
+      newTotalPoints: userResult.rows[0].total_points,
+      message: totalPointsEarned > 0
+        ? `Report submitted! You earned +${totalPointsEarned} points 🌱`
+        : 'Report submitted! (Daily points limit reached)',
     });
+
   } catch (err) {
-    await db.query('ROLLBACK');
-    console.error('Error submitting report:', err);
-    res.status(500).json({ status: 'error', message: 'Failed to submit report.' });
+    await dbClient.query('ROLLBACK');
+    // Clean up uploaded file if DB failed
+    if (req.file && require('fs').existsSync(req.file.path)) {
+      require('fs').unlinkSync(req.file.path);
+    }
+    console.error('submitReport error:', err.message);
+    res.status(500).json({ error: 'Failed to submit report. Please try again.' });
+  } finally {
+    dbClient.release();
   }
 };
 

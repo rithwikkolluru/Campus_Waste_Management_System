@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Phone, CheckCircle, ArrowRight, Recycle, AlertTriangle, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import './AuthPages.css';
+import GoogleLoginButton from '../components/GoogleLoginButton';
 
 export default function LoginPage() {
   const [loginType, setLoginType] = useState('student'); // 'student' or 'staff'
@@ -22,7 +23,7 @@ export default function LoginPage() {
   // General State
   const [error, setError]         = useState('');
   const [loading, setLoading]     = useState(false);
-  const { requestOtp, login, loginStaff } = useAuth();
+  const { requestOtp, login, loginStaff, googleLogin } = useAuth();
   const navigate                  = useNavigate();
 
   const handleRequestOtp = async (e) => {
@@ -219,6 +220,21 @@ export default function LoginPage() {
                     </div>
                   </form>
                 )}
+                
+                <div style={{ marginTop: '16px' }}>
+                  <p style={{ textAlign: 'center', marginBottom: '8px', fontSize: '14px' }}>
+                    Or sign in with your Google account
+                  </p>
+                  <GoogleLoginButton
+                    onSuccess={(data) => {
+                      googleLogin(data.user, data.token);
+                      navigate('/student');
+                    }}
+                    onError={(message) => {
+                      setError(message);
+                    }}
+                  />
+                </div>
               </>
             ) : (
               <form onSubmit={handleStaffLogin} className="auth-form">

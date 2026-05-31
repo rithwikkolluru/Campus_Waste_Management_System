@@ -8,6 +8,7 @@ import {
   Plus, Bell, Search, ChevronRight, Star, Award, Target
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import usePoints from '../hooks/usePoints';
 import './Dashboard.css';
 
 const MY_REPORTS = REPORTS.filter(r => r.reporter === 'Arjun Sharma');
@@ -24,34 +25,14 @@ export default function StudentDashboard() {
   const { unreadCount, showToast } = useNotifications();
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
-  const [userStats, setUserStats] = useState({
-    total_points: 0, daily_points: 0, monthly_points: 0, max_daily: 50, max_monthly: 500
-  });
+  const [loading, setLoading] = useState(true);
+  const token = localStorage.getItem('eco_token');
+  const { points } = usePoints(token);
 
   useEffect(() => {
-    // Fetch Gamification stats
-    const fetchStats = async () => {
-      if(!user?.id) return;
-      try {
-        const res = await fetch(`http://localhost:8000/api/auth/stats/${user.id}`);
-        const data = await res.json();
-        if(data.status === 'success' && data.stats) {
-          setUserStats(data.stats);
-        }
-      } catch(e) {
-        console.warn('Failed to fetch stats, using mock', e);
-        // Fallback for demo
-        setUserStats({
-          total_points: user.total_points || 15,
-          daily_points: 15,
-          monthly_points: 45,
-          max_daily: 50,
-          max_monthly: 500
-        });
-      }
-    };
-    fetchStats();
-  }, [user]);
+    const t = setTimeout(() => setLoading(false), 800);
+    return () => clearTimeout(t);
+  }, []);
 
   // Welcome toast on first load
   useEffect(() => {
@@ -91,35 +72,46 @@ export default function StudentDashboard() {
           </button>
         </div>
 
-        {/* Gamification Stats */}
-        <div className="glass-card mb-6" style={{ padding: '24px', background: 'linear-gradient(145deg, rgba(16,185,129,0.1), rgba(16,185,129,0.02))', border: '1px solid rgba(16,185,129,0.2)' }}>
+        {loading ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div className="glass-card" style={{ height: '180px', animation: 'pulse-glow 1.5s infinite' }} />
+            <div className="grid-2" style={{ alignItems: 'start', gap: '24px' }}>
+               <div className="glass-card" style={{ height: '240px', animation: 'pulse-glow 1.5s infinite' }} />
+               <div className="glass-card" style={{ height: '240px', animation: 'pulse-glow 1.5s infinite' }} />
+            </div>
+            <div className="glass-card" style={{ height: '300px', animation: 'pulse-glow 1.5s infinite' }} />
+          </div>
+        ) : (
+          <>
+            {/* Gamification Stats */}
+            <div className="glass-card mb-6" style={{ padding: '24px', background: 'linear-gradient(145deg, rgba(16,185,129,0.1), rgba(16,185,129,0.02))', border: '1px solid rgba(16,185,129,0.2)' }}>
            <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold flex items-center gap-2"><Award className="text-accent" /> Achievement Dashboard</h3>
-              <span className="badge badge-primary">Total Points: {userStats.total_points}</span>
+              <span className="badge badge-primary">Total Points: {points.total_points}</span>
            </div>
            <div className="grid-2 gap-4">
               {/* Daily Progress */}
               <div className="glass-card" style={{ padding: '16px', border: '1px solid rgba(59,130,246,0.3)' }}>
                  <div className="flex justify-between mb-2">
                     <span className="font-semibold flex items-center gap-2 text-sm"><Target size={14} className="text-blue" /> Daily Goal</span>
-                    <span className="text-sm font-bold text-blue">{userStats.daily_points} / {userStats.max_daily} pts</span>
+                    <span className="text-sm font-bold text-blue">{points.daily_earned} / {points.daily_limit} pts</span>
                  </div>
                  <div className="w-full bg-slate-800 rounded-full h-2.5 mb-2">
-                   <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${(userStats.daily_points / userStats.max_daily) * 100}%`, background: 'var(--accent-blue)' }}></div>
+                   <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${(points.daily_earned / points.daily_limit) * 100}%`, background: 'var(--accent-blue)' }}></div>
                  </div>
-                 <p className="text-xs text-muted text-right">{userStats.max_daily - userStats.daily_points} pts remaining today</p>
+                 <p className="text-xs text-muted text-right">{Math.max(0, points.daily_limit - points.daily_earned)} pts remaining today</p>
               </div>
 
               {/* Monthly Progress */}
               <div className="glass-card" style={{ padding: '16px', border: '1px solid rgba(139,92,246,0.3)' }}>
                  <div className="flex justify-between mb-2">
                     <span className="font-semibold flex items-center gap-2 text-sm"><Star size={14} className="text-purple" /> Monthly Goal</span>
-                    <span className="text-sm font-bold text-purple">{userStats.monthly_points} / {userStats.max_monthly} pts</span>
+                    <span className="text-sm font-bold text-purple">{points.monthly_earned} / {points.monthly_limit} pts</span>
                  </div>
                  <div className="w-full bg-slate-800 rounded-full h-2.5 mb-2">
-                   <div className="bg-purple-600 h-2.5 rounded-full" style={{ width: `${(userStats.monthly_points / userStats.max_monthly) * 100}%`, background: 'var(--accent-purple)' }}></div>
+                   <div className="bg-purple-600 h-2.5 rounded-full" style={{ width: `${(points.monthly_earned / points.monthly_limit) * 100}%`, background: 'var(--accent-purple)' }}></div>
                  </div>
-                 <p className="text-xs text-muted text-right">{userStats.max_monthly - userStats.monthly_points} pts remaining this month</p>
+                 <p className="text-xs text-muted text-right">{Math.max(0, points.monthly_limit - points.monthly_earned)} pts remaining this month</p>
               </div>
            </div>
         </div>
@@ -238,6 +230,8 @@ export default function StudentDashboard() {
             </table>
           </div>
         </div>
+          </>
+        )}
       </main>
     </div>
   );

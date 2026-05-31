@@ -18,6 +18,56 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('Overview');
   const [reports, setReports]     = useState(REPORTS);
   const [reportFilter, setFilter] = useState('All');
+  const token = localStorage.getItem('eco_token');
+
+  const fetchReports = async () => {
+    try {
+      const res = await fetch('http://localhost:8000/api/admin/reports', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const mapped = data.reports.map(r => ({
+          ...r,
+          dbId: r.id,
+          id: `RPT-00${r.id}`,
+          reporter: r.student_name,
+          zone: 'Zone ' + r.location,
+          desc: r.description,
+          type: r.waste_type,
+          date: new Date(r.created_at).toLocaleDateString(),
+          // Ensure status matches frontend capitalization
+          status: r.status === 'resolved' ? 'Resolved' : r.status === 'reported' ? 'Reported' : r.status
+        }));
+        setReports(mapped);
+      }
+    } catch (err) {
+      console.error('Failed to fetch real reports', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchReports();
+  }, [token]);
+
+  const handleStatusChange = async (dbId, newStatus) => {
+    try {
+      const mappedStatus = newStatus.toLowerCase();
+      const res = await fetch(`http://localhost:8000/api/admin/reports/${dbId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: mappedStatus })
+      });
+      if (res.ok) {
+        fetchReports();
+      }
+    } catch (err) {
+      console.error('Failed to update status', err);
+    }
+  };
 
   const stats = {
     total:    reports.length,
@@ -187,8 +237,20 @@ export default function AdminDashboard() {
                       <td>📍 {r.zone}</td>
                       <td>{r.type}</td>
                       <td style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.desc}</td>
-                      <td><span className={`badge ${PRIORITY_COLOR[r.priority]}`}>{r.priority}</span></td>
-                      <td><span className={`badge ${STATUS_COLOR[r.status]}`} style={{ fontSize: '0.68rem' }}>{r.status}</span></td>
+                      <td><span className={`badge ${PRIORITY_COLOR[r.priority] || 'badge-gray'}`}>{r.priority}</span></td>
+                      <td>
+                        <select 
+                          className="input-field" 
+                          style={{ padding: '4px 8px', fontSize: '0.75rem', height: 'auto', minHeight: 'auto' }}
+                          value={r.status}
+                          onChange={(e) => handleStatusChange(r.dbId || r.id, e.target.value)}
+                        >
+                          <option value="Reported">Reported</option>
+                          <option value="under_review">Under Review</option>
+                          <option value="in_progress">In Progress</option>
+                          <option value="resolved">Resolved</option>
+                        </select>
+                      </td>
                       <td>{r.date}</td>
                     </tr>
                   ))}
