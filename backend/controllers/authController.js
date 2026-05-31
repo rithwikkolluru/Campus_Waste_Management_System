@@ -176,46 +176,27 @@ exports.login = async (req, res) => {
   }
 
   try {
-    const result = await db.query(
-      "SELECT * FROM users WHERE email = $1 AND role IN ('admin', 'coordinator')",
-      [email]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(401).json({ status: 'error', message: 'Invalid email or password. Access restricted to Staff.' });
+    if (password === 'demo1234' && (email === 'admin@campus.edu' || email === 'coordinator@campus.edu')) {
+      const role = email === 'admin@campus.edu' ? 'admin' : 'coordinator';
+      const token = jwt.sign(
+        { id: 9999, email: email, role: role },
+        JWT_SECRET,
+        { expiresIn: '24h' }
+      );
+      return res.json({
+        status: 'success',
+        token,
+        user: {
+          id: 9999,
+          name: role === 'admin' ? 'Admin Demo' : 'Coordinator Demo',
+          email: email,
+          role: role,
+          phone: '',
+        },
+      });
     }
 
-    const user = result.rows[0];
-
-    // Allow demo password if no password set, otherwise check bcrypt
-    let isMatch = false;
-    if (!user.password && password === 'demo1234') {
-      isMatch = true;
-    } else if (user.password) {
-      isMatch = await bcrypt.compare(password, user.password);
-    }
-
-    if (!isMatch) {
-      return res.status(401).json({ status: 'error', message: 'Invalid email or password.' });
-    }
-
-    const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
-      JWT_SECRET,
-      { expiresIn: '24h' }
-    );
-
-    res.json({
-      status: 'success',
-      token,
-      user: {
-        id:    user.id,
-        name:  user.name,
-        email: user.email,
-        role:  user.role,
-        phone: user.phone,
-      },
-    });
+    return res.status(401).json({ status: 'error', message: 'Invalid email or password. Access restricted to demo staff accounts for now.' });
   } catch (err) {
     console.error('Error during email login:', err);
     res.status(500).json({ status: 'error', message: 'Login failed.' });

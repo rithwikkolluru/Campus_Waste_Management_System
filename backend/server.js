@@ -4,6 +4,13 @@ const cors    = require('cors');
 const morgan  = require('morgan');
 const path    = require('path');
 const compression = require('compression');
+const fs = require('fs');
+
+const uploadDir = path.join(__dirname, 'uploads/waste-photos');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+  console.log('Created uploads folder');
+}
 
 const app = express();
 const PORT = process.env.PORT || 8000;

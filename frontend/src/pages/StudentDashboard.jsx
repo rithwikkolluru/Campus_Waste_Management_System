@@ -11,13 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import usePoints from '../hooks/usePoints';
 import './Dashboard.css';
 
-const MY_REPORTS = REPORTS.filter(r => r.reporter === 'Arjun Sharma');
-
-const NOTIFICATIONS = [
-  { id: 1, message: 'Your report RPT-001 has been resolved ✅', time: '2h ago', read: false },
-  { id: 2, message: 'Coordinator assigned staff to RPT-006',       time: '5h ago', read: false },
-  { id: 3, message: 'Campus clean drive on Sat, 22 March',        time: '1d ago', read: true  },
-];
+// Removed mock MY_REPORTS and NOTIFICATIONS
 
 export default function StudentDashboard() {
   const { user }  = useAuth();
@@ -26,35 +20,68 @@ export default function StudentDashboard() {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
   const [loading, setLoading] = useState(true);
+  const [myReports, setMyReports] = useState([]);
   const token = localStorage.getItem('eco_token');
   const { points } = usePoints(token);
 
   useEffect(() => {
+    const fetchMyReports = async () => {
+      try {
+        const res = await fetch('http://localhost:8000/api/reports/my', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const mapped = data.reports.map(r => ({
+            ...r,
+            id: `RPT-00${r.id}`,
+            zone: r.zone_name,
+            desc: r.description,
+            type: r.waste_type,
+            date: new Date(r.created_at).toLocaleDateString(),
+            status: r.status === 'resolved' ? 'Resolved' : r.status === 'reported' ? 'Reported' : r.status,
+            photoUrl: r.photo_url ? `http://localhost:8000${r.photo_url}` : null
+          }));
+          setMyReports(mapped);
+        }
+      } catch (err) {
+        console.error('Failed to fetch real reports', err);
+      }
+    };
+    fetchMyReports();
     const t = setTimeout(() => setLoading(false), 800);
     return () => clearTimeout(t);
-  }, []);
+  }, [token]);
+
+  const dynamicNotifications = myReports.slice(0, 3).map(r => ({
+    id: r.id,
+    message: `Your report ${r.id} status is now: ${r.status}`,
+    time: r.date,
+    read: true
+  }));
 
   // Welcome toast on first load
   useEffect(() => {
+    if (loading) return;
     const key = `welcomed_${user?.id}`;
     if (!sessionStorage.getItem(key)) {
       showToast({
         type: 'info',
         title: `Welcome back, ${user?.name?.split(' ')[0] || 'Student'}! 👋`,
-        message: 'You have ' + (MY_REPORTS.filter(r => r.status !== 'Resolved').length) + ' pending reports.',
+        message: 'You have ' + (myReports.filter(r => r.status !== 'Resolved').length) + ' pending reports.',
         duration: 5000,
       });
       sessionStorage.setItem(key, '1');
     }
-  }, [user, showToast]);
+  }, [user, showToast, myReports, loading]);
 
-  const filtered = MY_REPORTS.filter(r => {
+  const filtered = myReports.filter(r => {
     const matchSearch = r.id.toLowerCase().includes(search.toLowerCase()) || r.zone.toLowerCase().includes(search.toLowerCase()) || r.desc.toLowerCase().includes(search.toLowerCase());
     const matchStatus = filterStatus === 'All' || r.status === filterStatus;
     return matchSearch && matchStatus;
   });
 
-  const latestReport = MY_REPORTS[0];
+  const latestReport = myReports[0];
   const statusIndex  = latestReport ? STATUS_FLOW.indexOf(latestReport.status) : 0;
 
   return (
@@ -158,6 +185,13 @@ export default function StudentDashboard() {
                     <span>📍 {latestReport.zone}</span>
                     <span>📅 {latestReport.date}</span>
                   </div>
+                  {latestReport.photoUrl && (
+                    <div style={{ marginTop: '12px' }}>
+                      <a href={latestReport.photoUrl} target="_blank" rel="noreferrer">
+                        <img src={latestReport.photoUrl} alt="Latest upload" style={{ width: '100px', height: '60px', objectFit: 'cover', borderRadius: '6px', border: '1px solid var(--glass-border)' }} />
+                      </a>
+                    </div>
+                  )}
                 </div>
               </>
             )}
@@ -170,7 +204,9 @@ export default function StudentDashboard() {
               <span className="badge badge-red">{unreadCount > 0 ? `${unreadCount} New` : 'Up to date'}</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {NOTIFICATIONS.map(n => (
+              {dynamicNotifications.length === 0 ? (
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No notifications yet</div>
+              ) : dynamicNotifications.map(n => (
                 <div key={n.id} className={`notif-item ${!n.read ? 'unread' : ''}`}>
                   <div className={`notif-dot ${!n.read ? 'notif-dot-active' : ''}`} />
                   <div style={{ flex: 1 }}>
@@ -209,15 +245,24 @@ export default function StudentDashboard() {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>ID</th><th>Zone</th><th>Type</th><th>Description</th><th>Status</th><th>Priority</th><th>Date</th>
+                  <th>ID</th><th>Photo</th><th>Zone</th><th>Type</th><th>Description</th><th>Status</th><th>Priority</th><th>Date</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.length === 0 ? (
-                  <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '30px' }}>No uploads found</td></tr>
+                  <tr><td colSpan={8} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '30px' }}>No uploads found</td></tr>
                 ) : filtered.map(r => (
                   <tr key={r.id}>
                     <td>{r.id}</td>
+                    <td>
+                      {r.photoUrl ? (
+                        <a href={r.photoUrl} target="_blank" rel="noreferrer">
+                          <img src={r.photoUrl} alt="Waste" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px', border: '1px solid var(--glass-border)' }} />
+                        </a>
+                      ) : (
+                        <div style={{ width: '40px', height: '40px', background: 'var(--bg-secondary)', borderRadius: '4px', border: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', color: 'var(--text-muted)' }}>No photo</div>
+                      )}
+                    </td>
                     <td>📍 {r.zone}</td>
                     <td>{r.type}</td>
                     <td style={{ maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.desc}</td>

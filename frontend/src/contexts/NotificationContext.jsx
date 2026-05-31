@@ -1,51 +1,41 @@
-import { createContext, useContext, useState, useCallback, useRef } from 'react';
+import { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 
 const NotificationContext = createContext(null);
 
 let _nextId = 1;
 
-const INITIAL_NOTIFICATIONS = [
-  {
-    id: 'n-1', type: 'success', category: 'report',
-    title: 'Report Resolved',
-    message: 'Your report RPT-001 (Hostel Area – Overflowing dustbin) has been marked as Resolved.',
-    time: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-    read: false, icon: '✅',
-  },
-  {
-    id: 'n-2', type: 'info', category: 'assignment',
-    title: 'Staff Assigned',
-    message: 'Cleaning staff Ramesh Kumar has been assigned to your report RPT-006.',
-    time: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-    read: false, icon: '👷',
-  },
-  {
-    id: 'n-3', type: 'warning', category: 'system',
-    title: 'Campus Clean Drive',
-    message: 'Campus-wide clean drive scheduled for Saturday, 22 March 2026. Participation encouraged.',
-    time: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-    read: true, icon: '📢',
-  },
-  {
-    id: 'n-4', type: 'success', category: 'report',
-    title: 'Report Submitted',
-    message: 'Your garbage report for the Canteen zone has been successfully submitted and is under review.',
-    time: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    read: true, icon: '📋',
-  },
-  {
-    id: 'n-5', type: 'info', category: 'status',
-    title: 'Status Update',
-    message: 'Report RPT-004 has been moved to "Under Review" by your zone coordinator.',
-    time: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-    read: true, icon: '🔄',
-  },
-];
+// Removed INITIAL_NOTIFICATIONS mock data
 
 export function NotificationProvider({ children }) {
-  const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState([]);
   const [toasts, setToasts]               = useState([]);
   const toastTimers                        = useRef({});
+
+  useEffect(() => {
+    const token = localStorage.getItem('eco_token');
+    if (!token) return;
+    
+    fetch('http://localhost:8000/api/reports/my', {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.status === 'success' && data.reports.length > 0) {
+        const generated = data.reports.slice(0, 5).map(r => ({
+          id: `n-${r.id}`,
+          type: r.status === 'resolved' ? 'success' : 'info',
+          category: 'report',
+          title: r.status === 'resolved' ? 'Report Resolved' : 'Status Update',
+          message: `Your report RPT-00${r.id} is currently ${r.status}.`,
+          time: new Date(r.updated_at || r.created_at).toISOString(),
+          read: true,
+          icon: r.status === 'resolved' ? '✅' : '🔄',
+        }));
+        setNotifications(generated);
+      }
+    })
+    .catch(err => console.error(err));
+  }, []);
 
   // ── Add a persistent notification ──────────────────────────────────
   const addNotification = useCallback((data) => {

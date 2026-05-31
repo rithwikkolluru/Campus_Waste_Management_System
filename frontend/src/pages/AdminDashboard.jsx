@@ -37,7 +37,8 @@ export default function AdminDashboard() {
           type: r.waste_type,
           date: new Date(r.created_at).toLocaleDateString(),
           // Ensure status matches frontend capitalization
-          status: r.status === 'resolved' ? 'Resolved' : r.status === 'reported' ? 'Reported' : r.status
+          status: r.status === 'resolved' ? 'Resolved' : r.status === 'reported' ? 'Reported' : r.status,
+          photoUrl: r.photos && r.photos.length > 0 ? `http://localhost:8000${r.photos[0].url}` : null
         }));
         setReports(mapped);
       }
@@ -227,12 +228,21 @@ export default function AdminDashboard() {
             <div style={{ overflowX: 'auto' }}>
               <table className="data-table">
                 <thead>
-                  <tr><th>ID</th><th>Reporter</th><th>Zone</th><th>Type</th><th>Description</th><th>Priority</th><th>Status</th><th>Date</th></tr>
+                  <tr><th>ID</th><th>Photo</th><th>Reporter</th><th>Zone</th><th>Type</th><th>Description</th><th>Priority</th><th>Status</th><th>Date</th></tr>
                 </thead>
                 <tbody>
                   {filteredReports.map(r => (
                     <tr key={r.id}>
                       <td>{r.id}</td>
+                      <td>
+                        {r.photoUrl ? (
+                          <a href={r.photoUrl} target="_blank" rel="noreferrer">
+                            <img src={r.photoUrl} alt="Waste" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px', border: '1px solid var(--glass-border)' }} />
+                          </a>
+                        ) : (
+                          <div style={{ width: '40px', height: '40px', background: 'var(--bg-secondary)', borderRadius: '4px', border: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', color: 'var(--text-muted)' }}>No photo</div>
+                        )}
+                      </td>
                       <td>{r.reporter}</td>
                       <td>📍 {r.zone}</td>
                       <td>{r.type}</td>

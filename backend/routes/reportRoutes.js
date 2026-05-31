@@ -22,6 +22,7 @@ const handleUpload = (req, res, next) => {
 const { authenticate } = require('../middleware/authMiddleware');
 
 // Routes
+router.get('/my', authenticate, reportController.getMyReports);
 router.get('/', reportController.getAllReports);
 router.post('/submit', authenticate, handleUpload, reportController.submitReport);
 router.put('/:id', reportController.updateStatus);

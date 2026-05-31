@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import { useAuth } from '../contexts/AuthContext';
 import { REPORTS, STATUS_COLOR, PRIORITY_COLOR, STATUS_FLOW } from '../data/mockData';
@@ -7,11 +7,40 @@ import './Dashboard.css';
 
 const STAFF = ['Ramesh Kumar', 'Suresh Patel', 'Lakshmi Devi', 'Vijay Singh', 'Meera Nair'];
 
-const ZONE_REPORTS = REPORTS.filter(r => r.zone === 'Academic Block' || r.status !== 'Resolved');
+// Removed mock ZONE_REPORTS
 
 export default function CoordinatorDashboard() {
   const { user } = useAuth();
-  const [reports, setReports]   = useState(ZONE_REPORTS);
+  const [reports, setReports]   = useState([]);
+  const token = localStorage.getItem('eco_token');
+
+  const fetchReports = async () => {
+    try {
+      const res = await fetch('http://localhost:8000/api/admin/reports', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const mapped = data.reports.map(r => ({
+          ...r,
+          id: `RPT-00${r.id}`,
+          zone: 'Zone ' + r.location,
+          desc: r.description,
+          type: r.waste_type,
+          date: new Date(r.created_at).toLocaleDateString(),
+          status: r.status === 'resolved' ? 'Resolved' : r.status === 'reported' ? 'Reported' : r.status,
+          photoUrl: r.photos && r.photos.length > 0 ? `http://localhost:8000${r.photos[0].url}` : null
+        }));
+        setReports(mapped);
+      }
+    } catch (err) {
+      console.error('Failed to fetch real reports', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchReports();
+  }, [token]);
   const [filter, setFilter]     = useState('All');
   const [sortPriority, setSort] = useState(false);
   const [assigned, setAssigned] = useState({});
@@ -148,13 +177,22 @@ export default function CoordinatorDashboard() {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>ID</th><th>Zone</th><th>Type</th><th>Description</th><th>Priority</th><th>Status</th><th>Assign Staff</th><th>Actions</th>
+                  <th>ID</th><th>Photo</th><th>Zone</th><th>Type</th><th>Description</th><th>Priority</th><th>Status</th><th>Assign Staff</th><th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {sorted.map(r => (
                   <tr key={r.id}>
                     <td title={r.id}>{r.id}</td>
+                    <td>
+                      {r.photoUrl ? (
+                        <a href={r.photoUrl} target="_blank" rel="noreferrer">
+                          <img src={r.photoUrl} alt="Waste" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px', border: '1px solid var(--glass-border)' }} />
+                        </a>
+                      ) : (
+                        <div style={{ width: '40px', height: '40px', background: 'var(--bg-secondary)', borderRadius: '4px', border: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', color: 'var(--text-muted)' }}>No photo</div>
+                      )}
+                    </td>
                     <td>📍 {r.zone}</td>
                     <td>{r.type}</td>
                     <td style={{ maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.desc}</td>

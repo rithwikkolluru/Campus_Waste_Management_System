@@ -6,6 +6,32 @@ const { awardPoints } = require('./rewardsController');
 const VALID_STATUSES = ['reported', 'under_review', 'assigned', 'in_progress', 'resolved'];
 
 /**
+ * Fetch reports for the logged-in user
+ */
+exports.getMyReports = async (req, res) => {
+  const userId = req.user.userId || req.user.id;
+  try {
+    const queryText = `
+      SELECT r.*,
+             COALESCE(u.name, 'Unknown') AS reporter_name,
+             COALESCE(z.name, 'Unknown') AS zone_name,
+             p.file_url AS photo_url
+      FROM reports r
+      LEFT JOIN users u ON r.user_id = u.id
+      LEFT JOIN zones z ON r.zone_id = z.id
+      LEFT JOIN report_photos p ON p.report_id = r.id
+      WHERE r.user_id = $1
+      ORDER BY r.created_at DESC
+    `;
+    const result = await db.query(queryText, [userId]);
+    res.json({ status: 'success', reports: result.rows });
+  } catch (err) {
+    console.error('Error fetching my reports:', err);
+    res.status(500).json({ status: 'error', message: 'Failed to fetch your reports.' });
+  }
+};
+
+/**
  * Fetch all reports with filtering (priority, status, zone)
  */
 exports.getAllReports = async (req, res) => {
