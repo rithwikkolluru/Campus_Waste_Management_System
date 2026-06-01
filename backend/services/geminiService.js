@@ -43,7 +43,7 @@ const classifyWaste = async (imagePath) => {
   }
 
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     const imageData = imageToBase64(imagePath);
     const mimeType = getMimeType(imagePath);
 
@@ -56,7 +56,7 @@ const classifyWaste = async (imagePath) => {
   "tips": "one short sentence disposal tip",
   "isWaste": true or false
 }
-If the image does not contain waste or garbage, set isWaste to false.`;
+IMPORTANT: If the image is a selfie, screenshot, stock photo, or anything that is NOT clearly discarded garbage, you MUST set isWaste to false to prevent fraud.`;
 
     const result = await model.generateContent([
       prompt,
@@ -94,7 +94,7 @@ const validateWastePhoto = async (imagePath, recentDescriptions = []) => {
   }
 
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     const imageData = imageToBase64(imagePath);
     const mimeType = getMimeType(imagePath);
 
@@ -102,18 +102,19 @@ const validateWastePhoto = async (imagePath, recentDescriptions = []) => {
       ? `Recent reports in last 2 hours: ${recentDescriptions.slice(0, 5).join(' | ')}`
       : 'No recent reports to compare.';
 
-    const prompt = `Analyze this image for a campus waste reporting system.
+    const prompt = `Analyze this image for a campus waste reporting system. Monetary rewards are tied to these submissions, so you MUST BE EXTREMELY STRICT to prevent fraud and scams.
 ${recentContext}
 
 Respond in this exact JSON format only, no other text:
 {
-  "isWaste": true or false (does image contain actual waste/garbage/litter?),
-  "isFake": true or false (is this a selfie, random object, or clearly not waste?),
+  "isWaste": true or false (does the image clearly and undeniably contain actual waste, garbage, or litter?),
+  "isFake": true or false (Set to TRUE if this is a selfie, a screenshot, a photo of a screen, stock photography, a random clean object, or anything suspicious that is not clearly discarded garbage),
   "isDuplicate": true or false (does this look very similar to a recent report above?),
   "severity": number 1-10 (1=small wrapper, 10=massive overflow),
-  "description": "one sentence describing what waste and where",
-  "reason": "explain if fake or duplicate, otherwise empty string"
-}`;
+  "description": "one sentence describing exactly what waste is visible",
+  "reason": "If isFake or isDuplicate is true, provide a detailed reason why it was rejected. Otherwise empty string."
+}
+IMPORTANT: If the image does not unambiguously show discarded garbage or waste meant to be cleaned up on a campus, set "isFake" to true and "isWaste" to false. Do not be lenient.`;
 
     const result = await model.generateContent([
       prompt,
@@ -144,7 +145,7 @@ const scoreSeverity = async (imagePath) => {
   }
 
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     const imageData = imageToBase64(imagePath);
     const mimeType = getMimeType(imagePath);
 
@@ -188,7 +189,7 @@ const generateWeeklyReport = async (reportData) => {
   }
 
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
     const prompt = `You are analyzing waste management data for a college campus.
 Here is this week's waste report data:

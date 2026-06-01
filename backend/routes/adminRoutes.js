@@ -104,6 +104,19 @@ router.get('/reports', authenticate, requireAdmin, async (req, res) => {
   }
 });
 
+// ── GET /api/admin/users ─────────────────────────────────────────────────────
+router.get('/users', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, name, email, role, created_at, total_points FROM users ORDER BY created_at DESC`
+    );
+    res.json({ users: result.rows });
+  } catch (err) {
+    console.error('Admin users error:', err.message);
+    res.status(500).json({ error: 'Failed to fetch users' });
+  }
+});
+
 // ── PATCH /api/admin/reports/:id/status ─────────────────────────────────────
 router.patch('/reports/:id/status', authenticate, requireAdmin, async (req, res) => {
   const dbClient = await pool.connect();

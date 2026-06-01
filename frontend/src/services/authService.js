@@ -10,7 +10,7 @@ export const authService = {
   async login(email, password) {
     const data = await api.login(email, password);
     if (data.token) {
-      sessionStorage.setItem('eco_token', data.token);
+      sessionStorage.setItem('ecocampus_token', data.token);
     }
     return data.user;
   },
@@ -29,7 +29,7 @@ export const authService = {
     try {
       await api.logout();
     } finally {
-      sessionStorage.removeItem('eco_token');
+      sessionStorage.removeItem('ecocampus_token');
       sessionStorage.removeItem('eco_user');
     }
   },
@@ -45,7 +45,7 @@ export const authService = {
    * Check if a token is currently stored (basic client-side guard).
    */
   isAuthenticated() {
-    return !!sessionStorage.getItem('eco_token');
+    return !!sessionStorage.getItem('ecocampus_token');
   },
 };
 

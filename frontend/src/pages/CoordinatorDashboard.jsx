@@ -1,20 +1,61 @@
 import { useState } from 'react';
 import Sidebar from '../components/Sidebar';
 import { useAuth } from '../contexts/AuthContext';
-import { REPORTS, STATUS_COLOR, PRIORITY_COLOR, STATUS_FLOW } from '../data/mockData';
-import { CheckCircle2, Clock, Filter, RefreshCw, Users, TrendingUp } from 'lucide-react';
-import './Dashboard.css';
-
-const STAFF = ['Ramesh Kumar', 'Suresh Patel', 'Lakshmi Devi', 'Vijay Singh', 'Meera Nair'];
-
-const ZONE_REPORTS = REPORTS.filter(r => r.zone === 'Academic Block' || r.status !== 'Resolved');
+import { useEffect, useCallback } from 'react';
+import { STATUS_COLOR, PRIORITY_COLOR, STATUS_FLOW } from '../data/mockData';
 
 export default function CoordinatorDashboard() {
   const { user } = useAuth();
-  const [reports, setReports]   = useState(ZONE_REPORTS);
+  const [reports, setReports]   = useState([]);
+  const [staff, setStaff]       = useState([]);
   const [filter, setFilter]     = useState('All');
   const [sortPriority, setSort] = useState(false);
   const [assigned, setAssigned] = useState({});
+  const token = localStorage.getItem('ecocampus_token');
+
+  const fetchReports = useCallback(async () => {
+    try {
+      const zoneName = user?.zone || 'Campus';
+      const res = await fetch(`http://localhost:8000/api/reports?zone=${encodeURIComponent(zoneName)}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const mapped = data.reports.map(r => ({
+          dbId: r.id,
+          id: `RPT-00${r.id}`,
+          zone: 'Zone ' + (r.location || r.zone_name),
+          desc: r.description,
+          type: r.waste_type,
+          status: r.status === 'resolved' ? 'Resolved' : r.status === 'reported' ? 'Reported' : r.status,
+          priority: r.priority || 'Low',
+          date: new Date(r.created_at).toLocaleDateString()
+        }));
+        setReports(mapped);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }, [token, user?.zone]);
+
+  const fetchStaff = useCallback(async () => {
+    try {
+      const res = await fetch('http://localhost:8000/api/staff/all', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setStaff(data.staff || []);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    fetchReports();
+    fetchStaff();
+  }, [fetchReports, fetchStaff]);
 
   const filtered = reports.filter(r => filter === 'All' || r.status === filter);
   const sorted   = sortPriority ? [...filtered].sort((a, b) => {
@@ -22,13 +63,43 @@ export default function CoordinatorDashboard() {
     return p[a.priority] - p[b.priority];
   }) : filtered;
 
-  const updateStatus = (id, newStatus) => {
-    setReports(prev => prev.map(r => r.id === id ? { ...r, status: newStatus } : r));
+  const assignStaffAction = async (id, staffName) => {
+    setAssigned(prev => ({ ...prev, [id]: staffName }));
+    const dbId = reports.find(r => r.id === id)?.dbId;
+    if (!dbId) return;
+
+    try {
+      await fetch(`http://localhost:8000/api/reports/${dbId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status: 'assigned', user_id: user.id })
+      });
+      fetchReports();
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  const assignStaff = (id, staff) => {
-    setAssigned(prev => ({ ...prev, [id]: staff }));
-    updateStatus(id, 'Assigned to Staff');
+  const advanceStatus = async (id, nextStat) => {
+    const dbId = reports.find(r => r.id === id)?.dbId;
+    if (!dbId) return;
+
+    // Convert nextStat back to db format
+    const dbStatus = nextStat === 'Resolved' ? 'resolved' :
+                     nextStat === 'Cleaning in Progress' ? 'in_progress' :
+                     nextStat === 'Assigned to Staff' ? 'assigned' :
+                     nextStat === 'Under Review' ? 'under_review' : 'reported';
+
+    try {
+      await fetch(`http://localhost:8000/api/reports/${dbId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status: dbStatus, user_id: user.id })
+      });
+      fetchReports();
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const stats = {
@@ -110,11 +181,12 @@ export default function CoordinatorDashboard() {
           <div className="glass-card" style={{ padding: '24px' }}>
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">Staff Roster</h3>
-              <span className="badge badge-green">{STAFF.length} Available</span>
+              <span className="badge badge-green">{staff.length} Available</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {STAFF.map((s, i) => {
-                const tasksAssigned = Object.values(assigned).filter(a => a === s).length;
+              {staff.map((s, i) => {
+                const sName = s.name;
+                const tasksAssigned = s.active_assignments || 0;
                 return (
                   <div key={i} className="priority-row">
                     <div className="sidebar-avatar" style={{
@@ -122,10 +194,10 @@ export default function CoordinatorDashboard() {
                       width: 32, height: 32, borderRadius: 8, fontSize: '0.7rem', flexShrink: 0,
                       display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700
                     }}>
-                      {s.split(' ').map(n => n[0]).join('')}
+                      {sName.split(' ').map(n => n[0]).join('')}
                     </div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{s}</div>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{sName}</div>
                       <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{tasksAssigned} tasks assigned</div>
                     </div>
                     <span className={`badge ${tasksAssigned > 0 ? 'badge-yellow' : 'badge-green'}`}>
@@ -165,11 +237,11 @@ export default function CoordinatorDashboard() {
                         <select
                           className="assign-select"
                           value={assigned[r.id] || ''}
-                          onChange={e => assignStaff(r.id, e.target.value)}
+                          onChange={e => assignStaffAction(r.id, e.target.value)}
                           id={`assign-${r.id}`}
                         >
                           <option value="">Assign staff...</option>
-                          {STAFF.map(s => <option key={s}>{s}</option>)}
+                          {staff.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                         </select>
                       ) : <span className="text-accent text-xs">Completed</span>}
                     </td>
@@ -177,7 +249,7 @@ export default function CoordinatorDashboard() {
                       {r.status !== 'Resolved' && (
                         <button
                           className="btn btn-outline btn-sm"
-                          onClick={() => updateStatus(r.id, nextStatus(r.status))}
+                          onClick={() => advanceStatus(r.id, nextStatus(r.status))}
                           id={`advance-${r.id}`}
                         >
                           <RefreshCw size={13} /> Advance

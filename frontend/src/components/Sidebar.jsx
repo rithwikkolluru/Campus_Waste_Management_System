@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
 import {
   LayoutDashboard, AlertTriangle, MapPin, Bell, Settings,
-  LogOut, Recycle, ChevronDown, Menu, X, Sun, Moon
+  LogOut, Recycle, ChevronDown, Menu, X, Sun, Moon, Trophy
 } from 'lucide-react';
 import './Sidebar.css';
 
@@ -12,8 +12,9 @@ const NAV_ITEMS = {
   student: [
     { icon: LayoutDashboard, label: 'Dashboard',      path: '/student',        notifKey: false },
     { icon: AlertTriangle,   label: 'Report Issue',   path: '/report',         notifKey: false },
-    { icon: MapPin,           label: 'My Zone',        path: '/student',        notifKey: false },
-    { icon: Bell,             label: 'Notifications',  path: '/notifications',  notifKey: true  },
+    { icon: Trophy,          label: 'Achievements',   path: '/achievements',   notifKey: false },
+    { icon: MapPin,          label: 'My Zone',        path: '/student',        notifKey: false },
+    { icon: Bell,            label: 'Notifications',  path: '/notifications',  notifKey: true  },
   ],
   coordinator: [
     { icon: LayoutDashboard, label: 'Dashboard',      path: '/coordinator',     notifKey: false },

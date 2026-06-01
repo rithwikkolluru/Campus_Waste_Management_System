@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
-import { ZONES, USERS, STATUS_COLOR, PRIORITY_COLOR, STATUS_FLOW } from '../data/mockData';
+import { ZONES as MOCK_ZONES, STATUS_COLOR, PRIORITY_COLOR, STATUS_FLOW } from '../data/mockData';
 import {
   Chart as ChartJS,
   ArcElement, Tooltip, Legend,
@@ -37,22 +37,28 @@ export default function AdminDashboard() {
   const [reportFilter, setFilter]     = useState('All');
   const [weeklyReport, setWeeklyReport] = useState(null);
   const [weeklyLoading, setWeeklyLoading] = useState(false);
-  const token = localStorage.getItem('eco_token');
+  const token = localStorage.getItem('ecocampus_token');
 
-  // ── Fetch live reports ─────────────────────────────────────────────────────
-  const fetchReports = async () => {
+  const [zones, setZones]             = useState([]);
+  const [users, setUsers]             = useState([]);
+
+  // ── Fetch live data ─────────────────────────────────────────────────────
+  const fetchAllData = async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/admin/reports', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
+      const [repRes, zoneRes, userRes] = await Promise.all([
+        fetch('http://localhost:8000/api/admin/reports', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('http://localhost:8000/api/zones', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('http://localhost:8000/api/admin/users', { headers: { Authorization: `Bearer ${token}` } })
+      ]);
+      
+      if (repRes.ok) {
+        const data = await repRes.json();
         const mapped = data.reports.map(r => ({
           ...r,
           dbId:     r.id,
           id:       `RPT-00${r.id}`,
           reporter: r.student_name,
-          zone:     'Zone ' + r.location,
+          zone:     r.location || r.zone_name || 'Campus',
           desc:     r.description,
           type:     r.waste_type,
           date:     new Date(r.created_at).toLocaleDateString(),
@@ -66,7 +72,28 @@ export default function AdminDashboard() {
         }));
         setReports(mapped);
       }
-    } catch (err) { console.error('Failed to fetch reports', err); }
+
+      if (zoneRes.ok) {
+        const data = await zoneRes.json();
+        setZones(data.zones.map(z => ({
+          ...z,
+          icon: MOCK_ZONES.find(mz => mz.name === z.name)?.icon || '📍',
+          total: parseInt(z.total_reports || 0),
+          pending: parseInt(z.pending_reports || 0),
+          resolved: parseInt(z.resolved_reports || 0)
+        })));
+      }
+
+      if (userRes.ok) {
+        const data = await userRes.json();
+        setUsers(data.users.map(u => ({
+          ...u,
+          status: 'Active',
+          joined: new Date(u.created_at).toLocaleDateString(),
+          zone: 'All Zones'
+        })));
+      }
+    } catch (err) { console.error('Failed to fetch admin data', err); }
   };
 
   // ── Fetch weekly AI report ─────────────────────────────────────────────────
@@ -83,7 +110,7 @@ export default function AdminDashboard() {
     finally { setWeeklyLoading(false); }
   };
 
-  useEffect(() => { fetchReports(); }, [token]);
+  useEffect(() => { fetchAllData(); }, [token]);
 
   useEffect(() => {
     if (activeTab === 'Weekly AI Report' && !weeklyReport) {
@@ -99,7 +126,7 @@ export default function AdminDashboard() {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status: newStatus.toLowerCase() })
       });
-      if (res.ok) fetchReports();
+      if (res.ok) fetchAllData();
     } catch (err) { console.error('Failed to update status', err); }
   };
 
@@ -108,7 +135,7 @@ export default function AdminDashboard() {
     total:    reports.length,
     resolved: reports.filter(r => r.status === 'Resolved').length,
     active:   reports.filter(r => r.status !== 'Resolved').length,
-    users:    USERS.length,
+    users:    users.length,
     rate:     reports.length > 0 ? Math.round((reports.filter(r => r.status === 'Resolved').length / reports.length) * 100) : 0,
     avgSeverity: reports.length > 0
       ? (reports.reduce((sum, r) => sum + (r.aiSeverity || 5), 0) / reports.length).toFixed(1)
@@ -135,10 +162,10 @@ export default function AdminDashboard() {
   };
 
   const barData = {
-    labels: ZONES.map(z => z.name.split(' ')[0]),
+    labels: zones.map(z => z.name.split(' ')[0]),
     datasets: [
-      { label: 'Resolved', data: ZONES.map(z => z.resolved), backgroundColor: 'rgba(16,185,129,0.75)', borderRadius: 6 },
-      { label: 'Pending',  data: ZONES.map(z => z.pending),  backgroundColor: 'rgba(239,68,68,0.75)',  borderRadius: 6 },
+      { label: 'Resolved', data: zones.map(z => z.resolved), backgroundColor: 'rgba(16,185,129,0.75)', borderRadius: 6 },
+      { label: 'Pending',  data: zones.map(z => z.pending),  backgroundColor: 'rgba(239,68,68,0.75)',  borderRadius: 6 },
     ]
   };
 
@@ -328,7 +355,7 @@ export default function AdminDashboard() {
         {/* ── ZONES TAB ────────────────────────────────────────────────────── */}
         {activeTab === 'Zones' && (
           <div className="grid-3 mb-6">
-            {ZONES.map((z) => (
+            {zones.map((z) => (
               <div key={z.id} className="glass-card" style={{ padding: '24px' }}>
                 <div className="flex justify-between items-center mb-3">
                   <span style={{ fontSize: '2rem' }}>{z.icon}</span>
@@ -353,13 +380,13 @@ export default function AdminDashboard() {
           <div className="glass-card" style={{ padding: '24px' }}>
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">Registered Users</h3>
-              <span className="badge badge-green">{USERS.length} Total</span>
+              <span className="badge badge-green">{users.length} Total</span>
             </div>
             <div style={{ overflowX: 'auto' }}>
               <table className="data-table">
                 <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Zone</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead>
                 <tbody>
-                  {USERS.map(u => (
+                  {users.map(u => (
                     <tr key={u.id}>
                       <td>
                         <div className="flex items-center gap-3">
@@ -395,7 +422,7 @@ export default function AdminDashboard() {
               <div className="glass-card" style={{ padding: '24px' }}>
                 <h3 className="text-lg font-semibold mb-4">Cleaning Efficiency by Zone</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  {ZONES.map(z => {
+                  {zones.map(z => {
                     const pct = Math.round((z.resolved / z.total) * 100);
                     return (
                       <div key={z.id}>

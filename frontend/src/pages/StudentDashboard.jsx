@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
-import { REPORTS, STATUS_COLOR, PRIORITY_COLOR, ZONES, STATUS_FLOW } from '../data/mockData';
+import { STATUS_COLOR, PRIORITY_COLOR, STATUS_FLOW } from '../data/mockData';
 import {
   AlertTriangle, CheckCircle2, Clock, TrendingUp,
   Plus, Bell, Search, ChevronRight, Star, Award, Target
@@ -11,13 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import usePoints from '../hooks/usePoints';
 import './Dashboard.css';
 
-const MY_REPORTS = REPORTS.filter(r => r.reporter === 'Arjun Sharma');
 
-const NOTIFICATIONS = [
-  { id: 1, message: 'Your report RPT-001 has been resolved ✅', time: '2h ago', read: false },
-  { id: 2, message: 'Coordinator assigned staff to RPT-006',       time: '5h ago', read: false },
-  { id: 3, message: 'Campus clean drive on Sat, 22 March',        time: '1d ago', read: true  },
-];
 
 export default function StudentDashboard() {
   const { user }  = useAuth();
@@ -26,13 +20,39 @@ export default function StudentDashboard() {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
   const [loading, setLoading] = useState(true);
-  const token = localStorage.getItem('eco_token');
+  const token = localStorage.getItem('ecocampus_token');
   const { points } = usePoints(token);
 
+  const [myReports, setMyReports] = useState([]);
+
   useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 800);
-    return () => clearTimeout(t);
-  }, []);
+    const fetchMyReports = async () => {
+      try {
+        const res = await fetch('http://localhost:8000/api/reports/my', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const mapped = data.reports.map(r => ({
+            id: `RPT-00${r.id}`,
+            dbId: r.id,
+            zone: r.location || r.zone_name || 'Campus',
+            desc: r.description,
+            type: r.waste_type,
+            status: r.status === 'resolved' ? 'Resolved' : r.status === 'reported' ? 'Reported' : r.status,
+            priority: r.priority || 'Low',
+            date: new Date(r.created_at).toLocaleDateString()
+          }));
+          setMyReports(mapped);
+        }
+      } catch (err) {
+        console.error('Failed to fetch reports', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchMyReports();
+  }, [token]);
 
   // Welcome toast on first load
   useEffect(() => {
@@ -41,20 +61,20 @@ export default function StudentDashboard() {
       showToast({
         type: 'info',
         title: `Welcome back, ${user?.name?.split(' ')[0] || 'Student'}! 👋`,
-        message: 'You have ' + (MY_REPORTS.filter(r => r.status !== 'Resolved').length) + ' pending reports.',
+        message: `You have ${myReports.filter(r => r.status !== 'Resolved').length} pending reports.`,
         duration: 5000,
       });
       sessionStorage.setItem(key, '1');
     }
-  }, [user, showToast]);
+  }, [user, showToast, myReports.length]);
 
-  const filtered = MY_REPORTS.filter(r => {
+  const filtered = myReports.filter(r => {
     const matchSearch = r.id.toLowerCase().includes(search.toLowerCase()) || r.zone.toLowerCase().includes(search.toLowerCase()) || r.desc.toLowerCase().includes(search.toLowerCase());
     const matchStatus = filterStatus === 'All' || r.status === filterStatus;
     return matchSearch && matchStatus;
   });
 
-  const latestReport = MY_REPORTS[0];
+  const latestReport = myReports[0];
   const statusIndex  = latestReport ? STATUS_FLOW.indexOf(latestReport.status) : 0;
 
   return (
@@ -87,7 +107,10 @@ export default function StudentDashboard() {
             <div className="glass-card mb-6" style={{ padding: '24px', background: 'linear-gradient(145deg, rgba(16,185,129,0.1), rgba(16,185,129,0.02))', border: '1px solid rgba(16,185,129,0.2)' }}>
            <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold flex items-center gap-2"><Award className="text-accent" /> Achievement Dashboard</h3>
-              <span className="badge badge-primary">Total Points: {points.total_points}</span>
+              <div className="flex items-center gap-3">
+                <span className="badge badge-primary">Total Points: {points.total_points}</span>
+                <button className="btn btn-outline btn-sm" onClick={() => navigate('/achievements')}>View Rewards & Badges <ChevronRight size={14}/></button>
+              </div>
            </div>
            <div className="grid-2 gap-4">
               {/* Daily Progress */}
@@ -169,17 +192,10 @@ export default function StudentDashboard() {
               <h3 className="text-lg font-semibold">Notifications</h3>
               <span className="badge badge-red">{unreadCount > 0 ? `${unreadCount} New` : 'Up to date'}</span>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {NOTIFICATIONS.map(n => (
-                <div key={n.id} className={`notif-item ${!n.read ? 'unread' : ''}`}>
-                  <div className={`notif-dot ${!n.read ? 'notif-dot-active' : ''}`} />
-                  <div style={{ flex: 1 }}>
-                    <p style={{ fontSize: '0.85rem', lineHeight: 1.5 }}>{n.message}</p>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{n.time}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+              {/* Real notifications come from NotificationContext */}
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                {unreadCount === 0 ? 'No new notifications.' : `You have ${unreadCount} unread notification(s).`}
+              </div>
           </div>
         </div>
 

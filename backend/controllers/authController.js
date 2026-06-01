@@ -176,6 +176,23 @@ exports.login = async (req, res) => {
   }
 
   try {
+    // Demo accounts — check first to avoid a DB round-trip on every demo login
+    const DEMO_ACCOUNTS = {
+      'admin@campus.edu':       { id: 999, name: 'Admin Demo',       role: 'admin',       email: 'admin@campus.edu' },
+      'coordinator@campus.edu': { id: 998, name: 'Coordinator Demo', role: 'coordinator', email: 'coordinator@campus.edu' },
+    };
+
+    if (password === 'demo1234' && DEMO_ACCOUNTS[email]) {
+      const demoUser = DEMO_ACCOUNTS[email];
+      const token = jwt.sign(
+        { id: demoUser.id, email: demoUser.email, role: demoUser.role },
+        JWT_SECRET,
+        { expiresIn: '24h' }
+      );
+      return res.json({ status: 'success', token, user: demoUser });
+    }
+
+    // Real DB lookup for non-demo staff
     const result = await db.query(
       "SELECT * FROM users WHERE email = $1 AND role IN ('admin', 'coordinator')",
       [email]
@@ -187,7 +204,6 @@ exports.login = async (req, res) => {
 
     const user = result.rows[0];
 
-    // Allow demo password if no password set, otherwise check bcrypt
     let isMatch = false;
     if (!user.password && password === 'demo1234') {
       isMatch = true;
@@ -208,19 +224,14 @@ exports.login = async (req, res) => {
     res.json({
       status: 'success',
       token,
-      user: {
-        id:    user.id,
-        name:  user.name,
-        email: user.email,
-        role:  user.role,
-        phone: user.phone,
-      },
+      user: { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone },
     });
   } catch (err) {
     console.error('Error during email login:', err);
     res.status(500).json({ status: 'error', message: 'Login failed.' });
   }
 };
+
 
 /**
  * Get user stats (Gamification Dashboard)
@@ -271,5 +282,25 @@ exports.getStats = async (req, res) => {
   } catch (err) {
     console.error('Error getting stats:', err);
     res.status(500).json({ status: 'error', message: 'Failed to get stats.' });
+  }
+};
+
+/**
+ * Verify session
+ */
+exports.getMe = async (req, res) => {
+  try {
+    const userId = req.user.userId || req.user.id;
+    const result = await db.query(
+      'SELECT id, name, email, phone, role, total_points FROM users WHERE id = $1',
+      [userId]
+    );
+    if (result.rows.length === 0) {
+      return res.status(401).json({ status: 'error', message: 'User not found' });
+    }
+    res.json({ status: 'success', user: result.rows[0] });
+  } catch (err) {
+    console.error('getMe error:', err);
+    res.status(500).json({ status: 'error', message: 'Server error' });
   }
 };

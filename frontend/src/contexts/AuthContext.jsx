@@ -2,123 +2,91 @@ import { createContext, useContext, useState, useEffect } from 'react';
 
 const AuthContext = createContext(null);
 
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem('eco_user');
-    const loginTime = localStorage.getItem('eco_login_time');
-    // Check 24 hour session expiration
-    if (saved && loginTime) {
-      if (Date.now() - parseInt(loginTime, 10) > 24 * 60 * 60 * 1000) {
-        localStorage.removeItem('eco_user');
-        localStorage.removeItem('eco_login_time');
-        localStorage.removeItem('eco_token');
-        return null;
-      }
-      return JSON.parse(saved);
+const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+
+const loadUser = () => {
+  try {
+    const saved     = localStorage.getItem('ecocampus_user');
+    const loginTime = localStorage.getItem('ecocampus_login_time');
+    if (!saved || !loginTime) return null;
+    if (Date.now() - parseInt(loginTime, 10) > SESSION_DURATION) {
+      localStorage.removeItem('ecocampus_user');
+      localStorage.removeItem('ecocampus_login_time');
+      localStorage.removeItem('ecocampus_token');
+      return null;
     }
+    return JSON.parse(saved);
+  } catch {
     return null;
-  });
+  }
+};
 
-  const requestOtp = async (phone) => {
-    try {
-      const res = await fetch('http://localhost:8000/api/auth/request-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'OTP request failed');
-      return { success: true, otpHint: data.otp_hint };
-    } catch (err) {
-      // Fallback mock if backend is down
-      console.warn('Backend fail, using mock OTP', err);
-      const mockOtp = Math.floor(1000 + Math.random() * 9000).toString();
-      return { success: true, otpHint: mockOtp, mock: true };
-    }
-  };
+const saveSession = (user, token) => {
+  localStorage.setItem('ecocampus_user',       JSON.stringify(user));
+  localStorage.setItem('ecocampus_login_time', Date.now().toString());
+  if (token) localStorage.setItem('ecocampus_token', token);
+};
 
-  const login = async (phone, otp, isMock, sentOtpHint) => {
-    if (isMock) {
-      if (otp !== sentOtpHint) {
-        return { success: false, error: 'Invalid OTP' };
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState(loadUser);
+
+  // Validate token on mount
+  useEffect(() => {
+    const verifyToken = async () => {
+      const token = localStorage.getItem('ecocampus_token');
+      if (!token) return;
+      try {
+        const res = await fetch('http://localhost:8000/api/auth/me', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) {
+          logout();
+        } else {
+          const data = await res.json();
+          setUser(data.user);
+          saveSession(data.user, token);
+        }
+      } catch (err) {
+        console.error('Session verify failed', err);
       }
-      const mockUser = { id: 1, name: 'Student Demo', phone, role: 'student', total_points: 0 };
-      setUser(mockUser);
-      localStorage.setItem('eco_user', JSON.stringify(mockUser));
-      localStorage.setItem('eco_login_time', Date.now().toString());
-      return { success: true, role: 'student' };
-    }
+    };
+    verifyToken();
+  }, []);
 
-    try {
-      const res = await fetch('http://localhost:8000/api/auth/verify-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, otp }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Invalid OTP');
-      
-      setUser(data.user);
-      localStorage.setItem('eco_user', JSON.stringify(data.user));
-      localStorage.setItem('eco_token', data.token);
-      localStorage.setItem('eco_login_time', Date.now().toString());
-      return { success: true, role: data.user.role };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
+  // Google OAuth login (students only)
+  const googleLogin = (userData, token) => {
+    setUser(userData);
+    saveSession(userData, token);
   };
 
+  // Staff login — always hits the backend to get a real JWT
   const loginStaff = async (email, password) => {
-    // Demo Mock fallback
-    if (password === 'demo1234') {
-      const mockUser = {
-        id: email.includes('admin') ? 3 : 2, 
-        name: email.includes('admin') ? 'Admin Demo' : 'Coordinator Demo', 
-        email, 
-        role: email.includes('admin') ? 'admin' : 'coordinator' 
-      };
-      setUser(mockUser);
-      localStorage.setItem('eco_user', JSON.stringify(mockUser));
-      localStorage.setItem('eco_login_time', Date.now().toString());
-      return { success: true, role: mockUser.role };
-    }
-
     try {
-      const res = await fetch('http://localhost:8000/api/auth/login', {
-        method: 'POST',
+      const res  = await fetch('http://localhost:8000/api/auth/login', {
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body:    JSON.stringify({ email, password }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Invalid credentials');
-      
+
       setUser(data.user);
-      localStorage.setItem('eco_user', JSON.stringify(data.user));
-      localStorage.setItem('eco_token', data.token);
-      localStorage.setItem('eco_login_time', Date.now().toString());
+      saveSession(data.user, data.token);
       return { success: true, role: data.user.role };
-    } catch (error) {
-      return { success: false, error: error.message };
+    } catch (err) {
+      return { success: false, error: err.message };
     }
   };
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('eco_user');
-    localStorage.removeItem('eco_login_time');
-    localStorage.removeItem('eco_token');
+    localStorage.removeItem('ecocampus_user');
+    localStorage.removeItem('ecocampus_login_time');
+    localStorage.removeItem('ecocampus_token');
   };
-
-  const googleLogin = (userData, token) => {
-    setUser(userData);
-    localStorage.setItem('eco_user', JSON.stringify(userData));
-    localStorage.setItem('eco_token', token);
-    localStorage.setItem('eco_login_time', Date.now().toString());
-  };
-
 
   return (
-    <AuthContext.Provider value={{ user, requestOtp, login, loginStaff, logout, googleLogin, setUser }}>
+    <AuthContext.Provider value={{ user, loginStaff, logout, googleLogin, setUser }}>
       {children}
     </AuthContext.Provider>
   );

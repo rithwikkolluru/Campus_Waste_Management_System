@@ -7,7 +7,7 @@ const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
 // ── Token helpers ───────────────────────────────────────────────────────────
 function getToken() {
-  return sessionStorage.getItem('eco_token');
+  return sessionStorage.getItem('ecocampus_token');
 }
 
 function buildHeaders(isFormData = false) {

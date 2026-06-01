@@ -11,6 +11,9 @@ router.post('/login',       authController.login);
 router.get('/stats/:id',    authController.getStats);
 router.post('/google/student', googleStudentLogin);
 
+// Verify session
+router.get('/me', authenticate, authController.getMe);
+
 const { getMyPoints } = require('../controllers/rewardsController');
 router.get('/rewards/my-points', authenticate, getMyPoints);
 

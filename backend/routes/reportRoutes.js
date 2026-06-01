@@ -26,7 +26,7 @@ router.post('/analyze-photo', authenticate, handleUpload, reportController.analy
 router.get('/my', authenticate, reportController.getMyReports);
 
 // All reports (admin/coordinator)
-router.get('/', reportController.getAllReports);
+router.get('/', authenticate, reportController.getAllReports);
 
 // Submit a new report with photo + full AI analysis
 router.post('/submit', authenticate, handleUpload, reportController.submitReport);

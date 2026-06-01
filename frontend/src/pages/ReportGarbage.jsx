@@ -54,7 +54,7 @@ export default function ReportGarbage() {
   const navigate = useNavigate();
   const { user, setUser } = useAuth();
   const fileRef  = useRef(null);
-  const token    = localStorage.getItem('eco_token');
+  const token    = localStorage.getItem('ecocampus_token');
   const { refreshPoints } = usePoints(token);
   const { notify } = useNotifications();
 

@@ -6,6 +6,7 @@ import ReportGarbage from './pages/ReportGarbage';
 import CoordinatorDashboard from './pages/CoordinatorDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import NotificationsPage from './pages/NotificationsPage';
+import AchievementsPage from './pages/AchievementsPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import ToastContainer from './components/ToastNotification';
@@ -37,6 +38,11 @@ function App() {
             <Route path="/report" element={
               <PrivateRoute roles={['student']}>
                 <ReportGarbage />
+              </PrivateRoute>
+            } />
+            <Route path="/achievements" element={
+              <PrivateRoute roles={['student']}>
+                <AchievementsPage />
               </PrivateRoute>
             } />
             <Route path="/coordinator" element={
