@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
 import {
   LayoutDashboard, AlertTriangle, MapPin, Bell, Settings,
-  LogOut, Recycle, ChevronDown, Menu, X, Sun, Moon, Trophy
+  LogOut, Recycle, ChevronDown, Menu, X, Sun, Moon, Trophy, Map
 } from 'lucide-react';
 import './Sidebar.css';
 
@@ -13,19 +13,19 @@ const NAV_ITEMS = {
     { icon: LayoutDashboard, label: 'Dashboard',      path: '/student',        notifKey: false },
     { icon: AlertTriangle,   label: 'Report Issue',   path: '/report',         notifKey: false },
     { icon: Trophy,          label: 'Achievements',   path: '/achievements',   notifKey: false },
-    { icon: MapPin,          label: 'My Zone',        path: '/student',        notifKey: false },
+    { icon: Map,             label: 'Campus Map',     path: '/map',            notifKey: false },
     { icon: Bell,            label: 'Notifications',  path: '/notifications',  notifKey: true  },
   ],
   coordinator: [
     { icon: LayoutDashboard, label: 'Dashboard',      path: '/coordinator',     notifKey: false },
     { icon: AlertTriangle,   label: 'Complaints',     path: '/coordinator',     notifKey: false },
-    { icon: MapPin,           label: 'Zone Map',       path: '/coordinator',     notifKey: false },
-    { icon: Bell,             label: 'Notifications',  path: '/notifications',   notifKey: true  },
+    { icon: Map,             label: 'Campus Map',     path: '/map',             notifKey: false },
+    { icon: Bell,            label: 'Notifications',  path: '/notifications',   notifKey: true  },
   ],
   admin: [
     { icon: LayoutDashboard, label: 'Dashboard',      path: '/admin',           notifKey: false },
     { icon: AlertTriangle,   label: 'All Reports',    path: '/admin',           notifKey: false },
-    { icon: MapPin,           label: 'Zones',          path: '/admin',           notifKey: false },
+    { icon: Map,             label: 'Campus Map',     path: '/map',             notifKey: false },
     { icon: Settings,         label: 'Users',          path: '/admin',           notifKey: false },
     { icon: Bell,             label: 'Notifications',  path: '/notifications',   notifKey: true  },
   ],

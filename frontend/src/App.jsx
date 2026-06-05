@@ -6,6 +6,7 @@ import ReportGarbage from './pages/ReportGarbage';
 import CoordinatorDashboard from './pages/CoordinatorDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import NotificationsPage from './pages/NotificationsPage';
+import CampusMapPage from './pages/CampusMapPage';
 import AchievementsPage from './pages/AchievementsPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { NotificationProvider } from './contexts/NotificationContext';
@@ -59,6 +60,13 @@ function App() {
             <Route path="/notifications" element={
               <PrivateRoute roles={['student', 'coordinator', 'admin']}>
                 <NotificationsPage />
+              </PrivateRoute>
+            } />
+
+            {/* Campus Map – accessible to all logged-in roles */}
+            <Route path="/map" element={
+              <PrivateRoute roles={['student', 'coordinator', 'admin']}>
+                <CampusMapPage />
               </PrivateRoute>
             } />
 
