@@ -8,6 +8,8 @@ import { validateImageFile, validateReportForm } from '../utils/validation';
 import { generateReportId } from '../utils/helpers';
 import usePoints from '../hooks/usePoints';
 import './Dashboard.css';
+import CameraCapture from '../components/CameraCapture';
+import LocationVerifier from '../components/LocationVerifier';
 
 const ZONES = [
   { name: 'Hostel Area',    emoji: '🏠' },
@@ -74,6 +76,22 @@ export default function ReportGarbage() {
   const [aiAnalyzing, setAiAnalyzing]   = useState(false);  // spinner while pre-analyzing
   const [aiSuggestion, setAiSuggestion] = useState(null);   // result of analyze-photo
   const [userOverride, setUserOverride] = useState(false);  // true if user manually changed type
+
+  // Location/GPS states
+  const [locationVerified, setLocationVerified] = useState(false);
+  const [coords, setCoords] = useState({ lat: null, lng: null, accuracy: null });
+  const [locationError, setLocationError] = useState(null);
+
+  const handleLocationVerified = ({ lat, lng, accuracy }) => {
+    setLocationVerified(true);
+    setCoords({ lat, lng, accuracy });
+    setLocationError(null);
+  };
+
+  const handleLocationFailed = (error) => {
+    setLocationVerified(false);
+    setLocationError(error);
+  };
 
   // ── Handle file selection → instant AI pre-analysis ──────────────────────
   const handleFile = async (file) => {
@@ -154,6 +172,9 @@ export default function ReportGarbage() {
       formData.append('priority',    priority.toLowerCase());
       formData.append('user_id',     user?.id || 1);
       formData.append('location',    zone);
+      formData.append('latitude',     coords.lat);
+      formData.append('longitude',    coords.lng);
+      formData.append('gps_accuracy', coords.accuracy !== null ? coords.accuracy : '');
       if (fileObj) {
         const compressed = await compressImage(fileObj);
         formData.append('image', compressed);
@@ -203,6 +224,7 @@ export default function ReportGarbage() {
   const resetForm = () => {
     setPreview(null); setFileObj(null); setZone(''); setDesc('');
     setWasteType(''); setAiSuggestion(null); setUserOverride(false);
+    setCoords({ lat: null, lng: null, accuracy: null });
   };
 
   const progress = [!!preview, !!zone, !!wasteType, description.trim().length > 10].filter(Boolean).length;
@@ -241,6 +263,10 @@ export default function ReportGarbage() {
 
         <form onSubmit={handleSubmit}>
           <div className="glass-card report-form-card">
+            <LocationVerifier
+              onLocationVerified={handleLocationVerified}
+              onLocationFailed={handleLocationFailed}
+            />
 
             {/* ── Image Upload ───────────────────────────────────────────── */}
             <div className="form-section">
@@ -254,18 +280,8 @@ export default function ReportGarbage() {
               </div>
 
               {!preview ? (
-                <div
-                  className={`drop-zone ${dragOver ? 'drag-over' : ''}`}
-                  onClick={() => fileRef.current.click()}
-                  onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-                  onDragLeave={() => setDragOver(false)}
-                  onDrop={handleDrop}
-                  id="drop-zone"
-                >
-                  <div className="drop-icon">📸</div>
-                  <p><strong>Drag &amp; drop</strong> an image here</p>
-                  <span>AI will auto-detect waste type! (JPG, PNG, WEBP)</span>
-                  <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handleFile(e.target.files[0])} id="image-upload" />
+                <div style={!locationVerified ? { pointerEvents: 'none', opacity: 0.6 } : {}}>
+                  <CameraCapture onPhotoCapture={handleFile} />
                 </div>
               ) : (
                 <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
@@ -346,12 +362,12 @@ export default function ReportGarbage() {
               <div className="form-section-title">
                 <MapPin size={18} color="var(--accent-green)" /> Select Campus Zone
               </div>
-              <div className="zone-grid">
+              <div className="zone-grid" style={!locationVerified ? { pointerEvents: 'none', opacity: 0.6 } : {}}>
                 {ZONES.map(z => (
                   <div
                     key={z.name}
                     className={`zone-option ${zone === z.name ? 'selected' : ''}`}
-                    onClick={() => setZone(z.name)}
+                    onClick={() => locationVerified && setZone(z.name)}
                     id={`zone-${z.name.replace(/\s+/g, '-').toLowerCase()}`}
                   >
                     <div className="zone-emoji">{z.emoji}</div>
@@ -385,6 +401,7 @@ export default function ReportGarbage() {
                         type="button"
                         className={`btn btn-sm ${wasteType === w ? 'btn-primary' : 'btn-ghost'}`}
                         onClick={() => handleWasteTypeSelect(w)}
+                        disabled={!locationVerified}
                         id={`waste-${w.toLowerCase().replace(/\s+/g, '-')}`}
                         style={
                           wasteType === w && aiSuggestion?.aiAvailable && !userOverride
@@ -415,6 +432,7 @@ export default function ReportGarbage() {
                         className={`btn btn-sm ${priority === p ? (p === 'High' ? 'btn-danger' : p === 'Medium' ? '' : 'btn-outline') : 'btn-ghost'}`}
                         style={priority === p && p === 'Medium' ? { background: 'rgba(245,158,11,0.2)', border: '1.5px solid rgba(245,158,11,0.4)', color: '#fbbf24' } : {}}
                         onClick={() => setPriority(p)}
+                        disabled={!locationVerified}
                         id={`priority-${p.toLowerCase()}`}
                       >
                         {p === 'High' ? '🔴' : p === 'Medium' ? '🟡' : '🟢'} {p}
@@ -438,6 +456,7 @@ export default function ReportGarbage() {
                 onChange={e => setDesc(e.target.value)}
                 style={{ resize: 'vertical', minHeight: '100px' }}
                 id="report-description"
+                disabled={!locationVerified}
               />
               <div style={{ fontSize: '0.75rem', color: description.length > 10 ? 'var(--accent-green)' : 'var(--text-muted)', marginTop: '4px', textAlign: 'right' }}>
                 {description.length} characters {description.length > 10 ? '✓' : '(min. 10)'}
@@ -447,13 +466,23 @@ export default function ReportGarbage() {
             {/* ── Submit ────────────────────────────────────────────────── */}
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
               <button type="button" className="btn btn-ghost btn-lg" onClick={() => navigate('/student')}>Cancel</button>
-              <button type="submit" className={`btn btn-primary btn-lg ${submitting ? 'loading' : ''}`} id="submit-report" disabled={submitting || aiAnalyzing}>
-                {submitting
-                  ? <><span className="spinner" /> Analyzing &amp; Uploading...</>
-                  : aiAnalyzing
-                    ? <><span className="spinner" /> AI Analyzing...</>
-                    : <><Send size={18} /> Submit Report</>
-                }
+              <button
+                type="submit"
+                className={`btn btn-primary btn-lg ${submitting ? 'loading' : ''}`}
+                id="submit-report"
+                disabled={!locationVerified || !preview || submitting || aiAnalyzing}
+              >
+                {submitting ? (
+                  <><span className="spinner" /> Submitting...</>
+                ) : aiAnalyzing ? (
+                  <><span className="spinner" /> AI Analyzing...</>
+                ) : !locationVerified ? (
+                  "📡 Verifying location..."
+                ) : !preview ? (
+                  "📸 Take a photo first"
+                ) : (
+                  <><Send size={18} /> ✅ Submit Report (+15 pts)</>
+                )}
               </button>
             </div>
           </div>

@@ -114,13 +114,44 @@ exports.analyzePhoto = async (req, res) => {
  * Submit a new garbage report with full AI analysis
  */
 exports.submitReport = async (req, res) => {
+  const { latitude, longitude, gps_accuracy, location, waste_type, description, priority, zone_id } = req.body;
+
+  if (!latitude || !longitude) {
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    return res.status(400).json({ 
+      error: 'Location is required to submit a report' 
+    });
+  }
+
+  const JNTUH_BOUNDS = {
+    north: 17.4960, south: 17.4880,
+    east: 78.3950,  west: 78.3870,
+  };
+
+  const isInsideCampus = (lat, lng) => {
+    return (
+      lat >= JNTUH_BOUNDS.south && lat <= JNTUH_BOUNDS.north &&
+      lng >= JNTUH_BOUNDS.west  && lng <= JNTUH_BOUNDS.east
+    );
+  };
+
+  if (!isInsideCampus(parseFloat(latitude), parseFloat(longitude))) {
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    return res.status(403).json({ 
+      error: 'You must be on JNTUH campus to submit a report',
+      code: 'OUTSIDE_CAMPUS'
+    });
+  }
+
   const dbClient = await pool.connect();
 
   try {
     await dbClient.query('BEGIN');
 
-    // user can manually set waste_type; AI may suggest but user override wins
-    const { location, waste_type, description, priority, zone_id } = req.body;
     const userId = req.user.userId || req.user.id;
 
     let aiData        = null;
@@ -172,8 +203,9 @@ exports.submitReport = async (req, res) => {
     const reportResult = await dbClient.query(
       `INSERT INTO reports
         (user_id, zone_id, description, waste_type, priority, status,
-         ai_severity, ai_priority, ai_description, location)
-       VALUES ($1, $2, $3, $4, $5, 'reported', $6, $7, $8, $9)
+         ai_severity, ai_priority, ai_description, location,
+         latitude, longitude, location_verified, gps_accuracy)
+       VALUES ($1, $2, $3, $4, $5, 'reported', $6, $7, $8, $9, $10, $11, $12, $13)
        RETURNING id`,
       [
         userId,
@@ -185,6 +217,10 @@ exports.submitReport = async (req, res) => {
         aiData?.severity?.priority    || 'Medium',
         aiData?.validation?.description || null,
         location || null,
+        parseFloat(latitude),
+        parseFloat(longitude),
+        true,
+        gps_accuracy ? parseInt(gps_accuracy, 10) : null
       ]
     );
 
