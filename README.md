@@ -1175,7 +1175,7 @@ git push origin feature/AmazingFeature
 
 ---
 
-## 👥 Work Done the Areas
+## 👥 Work Done In the Areas
 
 <table>
 <tr>
@@ -1224,7 +1224,9 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 
 **Made with 💚 for a cleaner campus**
 
-⭐ If this project helped you, please give it a star!
+⭐ If this project helped you, please give it a star! it give me more confidence to keep more projects in the public rep 
+
+### Thank you For Reading This long 
 
 [![GitHub stars](https://img.shields.io/github/stars/rithwikkolluru/Campus_Waste_Management_System?style=social)](https://github.com/rithwikkolluru/Campus_Waste_Management_System/stargazers)
 
