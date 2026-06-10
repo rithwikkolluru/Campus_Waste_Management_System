@@ -152,6 +152,36 @@
 
 ---
 
+### 👷 Coordinator Interface
+
+<div align="center">
+  <img src="docs/images/coordinator_overview.png" alt="Coordinator Overview" width="100%" style="border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"/>
+  <br/>
+  <em>Command Center Overview showing active tasks and SLA warnings</em>
+  <br/><br/>
+  
+  <img src="docs/images/coordinator_reports.png" alt="Coordinator Reports Dispatch" width="100%" style="border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"/>
+  <br/>
+  <em>Zone Complaint Dispatch and Worker Assignment</em>
+  <br/><br/>
+  
+  <img src="docs/images/coordinator_bins.png" alt="Coordinator Bin Management" width="100%" style="border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"/>
+  <br/>
+  <em>Register New Bins and Request Supplies</em>
+  <br/><br/>
+
+  <img src="docs/images/coordinator_announcements.png" alt="Coordinator Announcements" width="100%" style="border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"/>
+  <br/>
+  <em>Broadcast Announcements to Specific Campus Zones</em>
+  <br/><br/>
+
+  <img src="docs/images/coordinator_analytics.png" alt="Coordinator Analytics" width="100%" style="border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"/>
+  <br/>
+  <em>Monthly Zone Statistics and Resolution Analytics</em>
+</div>
+
+---
+
 ## 🤖 AI Intelligence System
 
 > Powered by **Google Gemini 2.5 Flash** — the most advanced free-tier AI model
