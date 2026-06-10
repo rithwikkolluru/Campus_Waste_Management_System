@@ -207,16 +207,16 @@ When a student takes a photo, Gemini AI instantly analyses it and returns:
 
 **Supported waste categories:**
 
-| Category | Bin Color | Examples |
-|----------|-----------|---------|
-| ♻️ Plastic | 🔵 Blue | Bottles, bags, wrappers |
-| 🍃 Organic | 🟢 Green | Food waste, leaves |
-| ⚡ E-waste | 🔴 Red | Batteries, cables, phones |
-| 📄 Paper | 🟡 Yellow | Newspapers, cardboard |
-| 🔩 Metal | ⚪ Grey | Cans, foil, wires |
-| 🫙 Glass | 🟠 Orange | Bottles, jars |
-| ☢️ Hazardous | 🟣 Purple | Chemicals, paint |
-| 🗑️ General | ⚫ Black | Mixed/unidentifiable |
+| Category     | Bin Color   | Examples |
+|--------------|-------------|---------|
+| ♻️ Plastic   | 🔵 Blue    | Bottles, bags, wrappers |
+| 🍃 Organic   | 🟢 Green   | Food waste, leaves |
+| ⚡ E-waste   | 🔴 Red     | Batteries, cables, phones |
+| 📄 Paper     | 🟡 Yellow  | Newspapers, cardboard |
+| 🔩 Metal     | ⚪ Grey    | Cans, foil, wires |
+| 🫙 Glass      | 🟠 Orange  | Bottles, jars |
+| ☢️ Hazardous | 🟣 Purple  | Chemicals, paint |
+| 🗑️ General   | ⚫ Black   | Mixed/unidentifiable |
 
 ---
 
@@ -230,15 +230,15 @@ Student uploads photo
 Gemini checks: "Is this actually waste?"
         ↓
 ┌─────────────────┬──────────────────────────────┐
-│ Selfie uploaded │ ❌ Blocked — "Please upload   │
-│                 │    an actual waste photo"     │
+│ Selfie uploaded │ ❌ Blocked — "Please upload  │
+│                 │    an actual waste photo"    │
 ├─────────────────┼──────────────────────────────┤
-│ Random object   │ ❌ Blocked — No points        │
+│ Random object   │ ❌ Blocked — No points       │
 ├─────────────────┼──────────────────────────────┤
-│ Duplicate area  │ ⚠️ Warning shown — Can submit │
-│ (same zone)     │    but reduced points         │
+│ Duplicate area  │ ⚠️ Warning shown — Can submit│
+│ (same zone)     │    but reduced points        │
 ├─────────────────┼──────────────────────────────┤
-│ Real waste photo│ ✅ Accepted — Full points     │
+│ Real waste photo│ ✅ Accepted — Full points    │
 └─────────────────┴──────────────────────────────┘
 ```
 
@@ -248,13 +248,13 @@ Gemini checks: "Is this actually waste?"
 
 Every report gets automatically scored 1–10 by Gemini:
 
-| Score | Priority | Badge | Meaning |
-|-------|----------|-------|---------|
-| 9–10 | 🚨 Critical | Red (Large pin) | Health hazard, huge area |
-| 7–8 | 🔴 High | Red pin | Large overflow, urgent |
-| 5–6 | 🟡 Medium | Orange pin | Moderate mess |
-| 3–4 | 🟢 Low | Yellow pin | Small pile |
-| 1–2 | ⚪ Minimal | Small pin | Single wrapper |
+| Score | Priority        | Badge            | Meaning                  |
+|-------|-----------------|------------------|--------------------------|
+| 9–10 | 🚨 Critical      | Red (Large pin)  | Health hazard, huge area |
+| 7–8  | 🔴 High          | Red pin          | Large overflow, urgent   |
+| 5–6  | 🟡 Medium        | Orange pin       | Moderate mess            |
+| 3–4  | 🟢 Low           | Yellow pin       | Small pile               |
+| 1–2  | ⚪ Minimal       | Small pin        | Single wrapper           |
 
 ---
 
@@ -287,23 +287,23 @@ Every Monday at 8:00 AM, Gemini generates a full campus waste analysis:
 ### Campus Map Features
 
 ```
-┌─────────────────────────────────────────────────────┐
-│  📊 32 Reports │ 🔴 8 Pending │ ✅ 21 Resolved │ 🚨 3 Critical  │
-├─────────────────────────────────────────────────────┤
+┌─────────────────────────────────────────────────────----------------|
+│  📊 32 Reports │ 🔴 8 Pending │ ✅ 21 Resolved │ 🚨 3 Critical    │
+├─────────────────────────────────────────────────────----------------┤
 │  [🗺️ All] [🔴 Pending] [🟡 Progress] [🟢 Resolved] [🚨 Critical]  │
-│                          [📍 Pins] [🔥 Heat]  [📋 History] [🔄]   │
-├─────────────────────────────────────────────────────┤
-│                                                     │
-│           🔴(big)                                   │
-│      🟡        🟢                                   │
-│           📍(you)    🔴                             │
-│    🟢                    🟡                         │
-│                  🔴(big)                            │
-│                                                     │
-│  ← JNTUH Campus Map (OpenStreetMap) →               │
-├─────────────────────────────────────────────────────┤
-│  Showing 32 reports on JNTUH Campus                 │
-└─────────────────────────────────────────────────────┘
+│                          [📍 Pins] [🔥 Heat]  [📋 History] [🔄]     │
+├─────────────────────────────────────────────────────----------------┤
+│                                                                     │
+│           🔴(big)                                                   │
+│      🟡        🟢                                                  │
+│           📍(you)    🔴                                             │
+│    🟢                    🟡                                        │
+│                  🔴(big)                                            │
+│                                                                     │
+│  ← JNTUH Campus Map (OpenStreetMap) →                               │
+├────────────────────────────────────────────────────-----------------|
+│  Showing 32 reports on JNTUH Campus                                 │
+└─────────────────────────────────────────────────────----------------┘
 ```
 
 ### Pin Color Legend
@@ -327,7 +327,7 @@ Every Monday at 8:00 AM, Gemini generates a full campus waste analysis:
 │                              │
 │ Overflowing bin near stairs  │
 │                              │
-│ 📍 Block C Entrance          │
+│ 📍 Block C Entrance           │
 │ ⚠️ Severity: 7/10 — 🔴 High │
 │ 👤 Rithwik K                 │
 │ 🕐 2h ago                    │
@@ -363,14 +363,14 @@ Slide-in panel (right on desktop, bottom sheet on mobile):
 
 ### Points System
 
-| Action | Points | Conditions |
-|--------|--------|------------|
-| 📋 Submit report | +10 pts | Always awarded |
-| 📷 Upload photo | +5 pts | With report |
-| ✅ Report verified | +15 pts | Admin/Coordinator marks resolved |
-| 🎉 Zone bonus | +20 pts | Area cleaned by staff |
-| 📅 Daily limit | 50 pts | Max per day |
-| 📆 Monthly limit | 500 pts | Max per month |
+| Action             | Points          | Conditions |
+|--------------------|-----------------|------------|
+| 📋 Submit report   | +10 pts         | Always awarded |
+| 📷 Upload photo    | +5 pts          | With report |
+| ✅ Report verified | +15 pts         | Admin/Coordinator marks resolved |
+| 🎉 Zone bonus      | +20 pts         | Area cleaned by staff |
+| 📅 Daily limit     | 50 pts          | Max per day |
+| 📆 Monthly limit   | 500 pts         | Max per month |
 
 ### Zone-Based Point Scaling
 
@@ -396,22 +396,22 @@ Slide-in panel (right on desktop, bottom sheet on mobile):
 
 ```
 ┌─────────────────────────────────────────────┐
-│  👤 Rithwik K   🥉 Contributor   Rank: #4   │
+│  👤 Rithwik K   🥉 Contributor   Rank: #4  │
 │  This Week: 45pts  Reports: 12  Zones: 3    │
 ├─────────────────────────────────────────────┤
-│  [📅 This Week] [📆 This Month] [🏆 All Time]│
-├────────────────────────────────────────────┤
-│         🥈              👑              🥉   │
-│      [Avatar]        [Avatar]        [Avatar]│
-│         🥈              🥇              🥉   │
-│       Arun K           Priya S        Dev R  │
-│       890 pts         1240 pts        750 pts│
-│    ████████        ████████████     ██████   │
+│  [📅 This Week] [📆 This Month] [All Time] │
+├────────────────────────────────────────────-┤
+│         🥈              👑           🥉   │
+│      [Avatar]        [Avatar]      [Avatar]│
+│         🥈              🥇           🥉   │
+│       Arun K           Priya S       Dev R  │
+│       890 pts         1240 pts       750 pts│
+│    ████████        ████████████    ██████   │
 ├─────────────────────────────────────────────┤
-│  4  🥉  [Avatar]  Rithwik K  🥉 Active      │
-│                              385 pts  📋12   │
+│  4  🥉  [Avatar]  Rithwik K  🥉 Active     │
+│                              385 pts  📋12  │
 │  5  [Avatar]  Sneha M  🥈 Active            │
-│                              310 pts  📋9    │
+│                              310 pts  📋9   │
 └─────────────────────────────────────────────┘
 ```
 
@@ -498,14 +498,14 @@ Report marked "Resolved" & Zone Bonus triggered for students
 
 ### Notification Types
 
-| Type | Icon | When Triggered |
-|------|------|----------------|
-| Zone Resolved | 🎉 | Your reported area was cleaned |
-| Zone Busy | 📍 | 5+ people reported same area |
+| Type               | Icon | When Triggered |
+|--------------------|------|----------------|
+| Zone Resolved      | 🎉 | Your reported area was cleaned |
+| Zone Busy          | 📍  | 5+ people reported same area |
 | Report In Progress | 🔧 | Admin starts working on report |
-| Area Cleaned | ✅ | Report marked resolved |
-| Daily Limit | 🏆 | 50 points earned today |
-| Weekly Summary | 📊 | Every Monday morning |
+| Area Cleaned       | ✅ | Report marked resolved |
+| Daily Limit        | 🏆 | 50 points earned today |
+| Weekly Summary     | 📊 | Every Monday morning |
 
 ### Notification Bell
 
@@ -577,15 +577,15 @@ Admin/Coordinator Dashboard (students cannot access)
 
 ### Role-Based Access Control
 
-| Route | Student | Admin | Coordinator |
-|-------|---------|-------|-------------|
-| `/student/*` | ✅ | ❌ | ❌ |
-| `/admin/*` | ❌ | ✅ | ❌ |
-| `/coordinator/*`| ❌ | ❌ | ✅ |
-| `/api/reports` (POST) | ✅ | ❌ | ❌ |
+| Route                 | Student | Admin | Coordinator |
+|-----------------------|---------|-------|-------------|
+| `/student/*`                 | ✅ | ❌ | ❌ |
+| `/admin/*`                   | ❌ | ✅ | ❌ |
+| `/coordinator/*`             | ❌ | ❌ | ✅ |
+| `/api/reports` (POST)        | ✅ | ❌ | ❌ |
 | `/api/admin/reports` (PATCH) | ❌ | ✅ | ❌ |
-| `/api/coordinator/*` | ❌ | ❌ | ✅ |
-| `/api/leaderboard` | ✅ | ✅ | ✅ |
+| `/api/coordinator/*`         | ❌ | ❌ | ✅ |
+| `/api/leaderboard`           | ✅ | ✅ | ✅ |
 
 ---
 
@@ -593,39 +593,39 @@ Admin/Coordinator Dashboard (students cannot access)
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        CLIENT (Browser)                          │
-│                                                                   │
+│                        CLIENT (Browser)                         │
+│                                                                 │
 │  ┌──────────────┐  ┌──────────────┐  ┌───────────────────────┐  │
-│  │  React + Vite │  │  Leaflet.js   │  │  Google Identity Svc  │  │
-│  │  Student UI   │  │  Campus Map   │  │  (OAuth One-Tap)      │  │
+│  │  React + Vite │  │  Leaflet.js   │  │  Google Identity Svc│  │
+│  │  Student UI   │  │  Campus Map   │  │  (OAuth One-Tap)    │  │
 │  └──────┬───────┘  └──────┬───────┘  └──────────┬────────────┘  │
-│         │                  │                       │               │
+│         │                  │                    │               │
 └─────────┼──────────────────┼───────────────────────┼─────────────┘
           │ REST API          │ Map Tiles (free)      │ ID Token
           ▼                  ▼                        ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                    Node.js + Express Backend                      │
-│                                                                   │
+│                    Node.js + Express Backend                    │
+│                                                                 │
 │  ┌────────────┐  ┌────────────┐  ┌──────────┐  ┌─────────────┐  │
-│  │Auth Routes │  │Report Routes│  │Map Routes│  │Leaderboard  │  │
+│  │Auth Routes │  │Report Routes│  │Map Routes│  │Leaderboard │  │
 │  │/api/auth/* │  │/api/reports│  │/api/maps │  │/api/leaderb │  │
 │  └─────┬──────┘  └─────┬──────┘  └────┬─────┘  └──────┬──────┘  │
-│        │               │               │                │          │
-│  ┌─────▼──────────────────────────────────────────────▼──────┐   │
-│  │                   Services Layer                            │   │
+│        │               │              │               │         │
+│  ┌─────▼──────────────────────────────────────────────▼──────┐  │
+│  │                   Services Layer                          │   │
 │  │  ┌──────────────┐  ┌───────────────┐  ┌────────────────┐  │   │
 │  │  │ geminiService│  │  zoneService  │  │ notifService   │  │   │
 │  │  │ (AI analysis)│  │ (50m radius)  │  │ (alerts)       │  │   │
 │  │  └──────┬───────┘  └───────┬───────┘  └───────┬────────┘  │   │
 │  └─────────┼─────────────────┼──────────────────┼────────────┘   │
-│            │                 │                   │                  │
+│            │                 │                  │                │
 └────────────┼─────────────────┼───────────────────┼─────────────────┘
              │                 │                   │
              ▼                 ▼                   ▼
 ┌─────────────────┐  ┌──────────────────┐  ┌─────────────────────┐
-│  Google Gemini  │  │   PostgreSQL DB   │  │   Local File Store   │
-│  2.5 Flash API  │  │   (collegeDB)     │  │  /uploads/waste-     │
-│  (AI classify)  │  │                  │  │   photos/*.jpg       │
+│  Google Gemini  │  │   PostgreSQL DB  │  │   Local File Store  │
+│  2.5 Flash API  │  │   (collegeDB)    │  │  /uploads/waste-    │
+│  (AI classify)  │  │                  │  │   photos/*.jpg      │
 └─────────────────┘  └──────────────────┘  └─────────────────────┘
 ```
 
@@ -635,56 +635,56 @@ Admin/Coordinator Dashboard (students cannot access)
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│                        DATABASE: collegeDB                        │
+│                        DATABASE: collegeDB                       │
 └──────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────┐         ┌──────────────────────────────────┐
-│       USERS          │         │             REPORTS              │
+│       USERS         │         │             REPORTS              │
 ├─────────────────────┤         ├──────────────────────────────────┤
-│ 🔑 id (PK)          │◄────────│ 🔑 id (PK)                       │
-│    email            │  1:N    │ 🔗 user_id (FK → users.id)       │
-│    name             │         │    location (text)                │
-│    google_id        │         │    waste_type (varchar)           │
-│    profile_picture  │         │    description (text)             │
-│    role             │         │    status (pending/progress/done) │
-│    total_points     │         │    latitude (decimal)             │
-│    longitude        │         │    longitude (decimal)            │
-│    weekly_points    │         │    location_verified (bool)       │
-│    monthly_points   │         │    zone_id (varchar)              │
-│    badge            │         │    zone_report_count (int)        │
-│    streak_days      │         │    ai_severity (int 1-10)         │
-│    last_report_date │         │    ai_priority (varchar)          │
-│    created_at       │         │    ai_description (text)          │
-└─────────────────────┘         │    updated_at                     │
-          │                     │    created_at                     │
+│ 🔑 id (PK)          │◄────────│ 🔑 id (PK)                      │
+│    email            │  1:N    │ 🔗 user_id (FK → users.id)      │
+│    name             │         │    location (text)               │
+│    google_id        │         │    waste_type (varchar)          │
+│    profile_picture  │         │    description (text)            │
+│    role             │         │    status (pending/progress/done)│
+│    total_points     │         │    latitude (decimal)            │
+│    longitude        │         │    longitude (decimal)           │
+│    weekly_points    │         │    location_verified (bool)      │
+│    monthly_points   │         │    zone_id (varchar)             │
+│    badge            │         │    zone_report_count (int)       │
+│    streak_days      │         │    ai_severity (int 1-10)        │
+│    last_report_date │         │    ai_priority (varchar)         │
+│    created_at       │         │    ai_description (text)         │
+└─────────────────────┘         │    updated_at                    │
+          │                     │    created_at                    │
           │                     └──────────────────────────────────┘
           │                                    │
           │                     ┌──────────────┘
           │                     │  1:N
           │              ┌──────▼───────────────────────┐
-          │              │       REPORT_PHOTOS           │
+          │              │       REPORT_PHOTOS          │
           │              ├──────────────────────────────┤
-          │              │ 🔑 id (PK)                   │
-          │              │ 🔗 report_id (FK → reports)  │
-          │              │ 🔗 user_id (FK → users)      │
-          │              │    file_path (varchar)        │
-          │              │    file_url (varchar)         │
-          │              │    original_name              │
-          │              │    file_size (int)            │
-          │              │    waste_category             │
-          │              │    ai_waste_type              │
-          │              │    ai_bin_color               │
-          │              │    ai_confidence (int)        │
-          │              │    ai_severity (int)          │
-          │              │    is_duplicate (bool)        │
-          │              │    uploaded_at                │
+          │              │ 🔑 id (PK)                  │
+          │              │ 🔗 report_id (FK → reports) │
+          │              │ 🔗 user_id (FK → users)     │
+          │              │    file_path (varchar)       │
+          │              │    file_url (varchar)        │
+          │              │    original_name             │
+          │              │    file_size (int)           │
+          │              │    waste_category            │
+          │              │    ai_waste_type             │
+          │              │    ai_bin_color              │
+          │              │    ai_confidence (int)       │
+          │              │    ai_severity (int)         │
+          │              │    is_duplicate (bool)       │
+          │              │    uploaded_at               │
           │              └──────────────────────────────┘
           │
           │   ┌──────────────────────────────────────────┐
-          │   │              POINTS_LOG                   │
+          │   │              POINTS_LOG                  │
           │   ├──────────────────────────────────────────┤
-          ├──►│ 🔑 id (PK)                               │
-          │   │ 🔗 user_id (FK → users.id)               │
+          ├──►│ 🔑 id (PK)                              │
+          │   │ 🔗 user_id (FK → users.id)              │
           │   │    points (int)                          │
           │   │    action (photo_upload/report/zone_bonus│
           │   │    report_id (int, nullable)             │
@@ -692,11 +692,11 @@ Admin/Coordinator Dashboard (students cannot access)
           │   └──────────────────────────────────────────┘
           │
           │   ┌──────────────────────────────────────────┐
-          │   │            NOTIFICATIONS                  │
+          │   │            NOTIFICATIONS                 │
           │   ├──────────────────────────────────────────┤
-          ├──►│ 🔑 id (PK)                               │
-          │   │ 🔗 user_id (FK → users.id)               │
-          │   │    type (zone_resolved/busy/status/etc)  │
+          ├──►│ 🔑 id (PK)                              │
+          │   │ 🔗 user_id (FK → users.id)              │
+          │   │    type (zone_resolved/busy/status/etc) │
           │   │    title (varchar)                       │
           │   │    message (text)                        │
           │   │    data (jsonb)                          │
@@ -705,10 +705,10 @@ Admin/Coordinator Dashboard (students cannot access)
           │   └──────────────────────────────────────────┘
           │
           │   ┌──────────────────────────────────────────┐
-          │   │             REPORT_ZONES                  │
+          │   │             REPORT_ZONES                 │
           │   ├──────────────────────────────────────────┤
-          │   │ 🔑 id (PK)                               │
-          │   │    zone_id (varchar, UNIQUE)              │
+          │   │ 🔑 id (PK)                              │
+          │   │    zone_id (varchar, UNIQUE)             │
           │   │    center_lat (decimal)                  │
           │   │    center_lng (decimal)                  │
           │   │    radius_meters (int default 50)        │
@@ -721,10 +721,10 @@ Admin/Coordinator Dashboard (students cannot access)
           │   └──────────────────────────────────────────┘
           │
           │   ┌──────────────────────────────────────────┐
-          │   │            ZONE_REPORTERS                 │
+          │   │            ZONE_REPORTERS                │
           │   ├──────────────────────────────────────────┤
-          ├──►│ 🔑 id (PK)                               │
-          │   │ 🔗 user_id (FK → users.id)               │
+          ├──►│ 🔑 id (PK)                              │
+          │   │ 🔗 user_id (FK → users.id)              │
           │   │    zone_id (varchar)                     │
           │   │    report_id (int)                       │
           │   │    bonus_points_awarded (bool)           │
@@ -733,11 +733,11 @@ Admin/Coordinator Dashboard (students cannot access)
           │   └──────────────────────────────────────────┘
           │
           │   ┌──────────────────────────────────────────┐
-              │            WEEKLY_REPORTS                 │
-              ├──────────────────────────────────────────┤
-              │ 🔑 id (PK)                               │
-              │    week_start (date)                     │
-              │    week_end (date)                       │
+          │   |   WEEKLY_REPORTS                         │
+          |   ├──────────────────────────────────────────┤
+          |   │ 🔑 id (PK)                              │
+          |   │    week_start (date)                     │
+          |__>│    week_end (date)                       │
               │    report_data (jsonb)                   │
               │    ai_analysis (jsonb)                   │
               │    created_at                            │
