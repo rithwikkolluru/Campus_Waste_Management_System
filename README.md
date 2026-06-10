@@ -95,6 +95,36 @@
 
 ---
 
+## 📸 Student Interface
+
+<div align="center">
+  <img src="docs/images/login.png" alt="Login Page" width="800" style="border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"/>
+  <br/>
+  <em>Secure Login for Students and Staff</em>
+  <br/><br/>
+  
+  <img src="docs/images/student_dashboard.png" alt="Student Dashboard" width="800" style="border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"/>
+  <br/>
+  <em>Student Dashboard showing goals, achievements, and notifications</em>
+  <br/><br/>
+  
+  <img src="docs/images/report_garbage.png" alt="Report Garbage" width="800" style="border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"/>
+  <br/>
+  <em>Live Camera Capture & Image Upload for Reporting</em>
+  <br/><br/>
+  
+  <img src="docs/images/achievements.png" alt="Achievements Dashboard" width="800" style="border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"/>
+  <br/>
+  <em>Milestones, Badges, and Rewards Tracking</em>
+  <br/><br/>
+  
+  <img src="docs/images/leaderboard.png" alt="Campus Leaderboard" width="800" style="border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"/>
+  <br/>
+  <em>Competitive Campus Leaderboard System</em>
+</div>
+
+---
+
 ## 🤖 AI Intelligence System
 
 > Powered by **Google Gemini 2.5 Flash** — the most advanced free-tier AI model
