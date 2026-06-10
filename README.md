@@ -2,7 +2,7 @@
 
 <img src="https://img.shields.io/badge/EcoCampus-Waste%20Management-22c55e?style=for-the-badge&logo=leaf&logoColor=white" alt="EcoCampus"/>
 
-# 🌱 EcoCampus — Smart Campus Waste Management System
+# 🌱 CleanGuard — Smart Campus Waste Management System
 
 ### *Transforming waste reporting into a gamified, AI-powered campus experience*
 
@@ -17,7 +17,7 @@
 
 <br/>
 
-> **EcoCampus** is a full-stack web application that empowers students to report campus waste in real time using AI-powered photo classification, GPS-verified location tracking, gamified reward points, and live heatmaps — turning environmental responsibility into a community-driven experience.
+> **CleanGuard** is a full-stack web application that empowers students to report campus waste in real time using AI-powered photo classification, GPS-verified location tracking, gamified reward points, and live heatmaps — turning environmental responsibility into a community-driven experience.
 
 <br/>
 
@@ -1175,7 +1175,7 @@ git push origin feature/AmazingFeature
 
 ---
 
-## 👥 Team
+## 👥 Work Done the Areas
 
 <table>
 <tr>
@@ -1185,16 +1185,19 @@ Full Stack + AI Integration<br/>
 <a href="https://github.com/rithwikkolluru">@rithwikkolluru</a>
 </td>
 <td align="center">
-<b>Team Member 2</b><br/>
+<b>Rithwik Kolluru</b><br/>
 Frontend Development<br/>
+<a href="https://github.com/rithwikkolluru">@rithwikkolluru</a>
 </td>
 <td align="center">
-<b>Team Member 3</b><br/>
+<b>Rithwik Kolluru</b><br/>
 Backend + Database<br/>
+<a href="https://github.com/rithwikkolluru">@rithwikkolluru</a>
 </td>
 <td align="center">
-<b>Team Member 4</b><br/>
+<b>Rithwik Kolluru</b><br/>
 UI/UX Design<br/>
+<a href="https://github.com/rithwikkolluru">@rithwikkolluru</a>
 </td>
 </tr>
 </table>
