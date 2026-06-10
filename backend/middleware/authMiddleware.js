@@ -24,4 +24,18 @@ const requireAdmin = (req, res, next) => {
   }
 };
 
-module.exports = { authenticate, requireAdmin };
+const requireCoordinator = (req, res, next) => {
+  if (!req.user || !['coordinator', 'admin'].includes(req.user.role)) {
+    return res.status(403).json({ error: 'Coordinator access required' });
+  }
+  next();
+};
+
+const requireStaffOrAbove = (req, res, next) => {
+  if (!req.user || !['coordinator', 'admin', 'staff'].includes(req.user.role)) {
+    return res.status(403).json({ error: 'Staff access required' });
+  }
+  next();
+};
+
+module.exports = { authenticate, requireAdmin, requireCoordinator, requireStaffOrAbove };

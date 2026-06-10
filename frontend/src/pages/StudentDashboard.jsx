@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import usePoints from '../hooks/usePoints';
+import NotificationBell from '../components/NotificationBell';
 import './Dashboard.css';
 
 
@@ -87,9 +88,12 @@ export default function StudentDashboard() {
             <h1>👋 Hello, {user?.name?.split(' ')[0] || 'Student'}!</h1>
             <p>Upload garbage photos to earn points and keep campus clean.</p>
           </div>
-          <button className="btn btn-primary" onClick={() => navigate('/report')} id="quick-report-btn">
-            <Plus size={18} /> Upload Photo (+5 pts)
-          </button>
+          <div className="flex items-center gap-4">
+            <NotificationBell />
+            <button className="btn btn-primary" onClick={() => navigate('/report')} id="quick-report-btn">
+              <Plus size={18} /> Upload Photo (+5 pts)
+            </button>
+          </div>
         </div>
 
         {loading ? (

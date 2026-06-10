@@ -384,7 +384,7 @@ export default function AdminDashboard() {
             </div>
             <div style={{ overflowX: 'auto' }}>
               <table className="data-table">
-                <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Zone</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead>
+                <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Points</th><th>Zone</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead>
                 <tbody>
                   {users.map(u => (
                     <tr key={u.id}>
@@ -398,6 +398,15 @@ export default function AdminDashboard() {
                       </td>
                       <td style={{ color: 'var(--text-muted)' }}>{u.email}</td>
                       <td><span className={`role-badge role-${u.role}`}>{u.role === 'admin' ? '👑' : u.role === 'coordinator' ? '🏅' : '🎓'} {u.role}</span></td>
+                      <td>
+                        <span style={{ 
+                          padding: '4px 10px', borderRadius: '20px',
+                          background: 'rgba(16,185,129,0.12)', color: '#10b981',
+                          fontWeight: 700, fontSize: '0.85rem'
+                        }}>
+                          {u.total_points || 0} pts
+                        </span>
+                      </td>
                       <td>📍 {u.zone}</td>
                       <td><span className={`badge ${u.status === 'Active' ? 'badge-green' : 'badge-red'}`}>{u.status}</span></td>
                       <td style={{ color: 'var(--text-muted)' }}>{u.joined}</td>

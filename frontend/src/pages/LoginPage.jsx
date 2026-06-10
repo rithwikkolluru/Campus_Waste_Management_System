@@ -49,11 +49,13 @@ export default function LoginPage() {
         {/* Left panel */}
         <div className="auth-left">
           <div className="auth-brand">
-            <div className="auth-logo animate-float">
-              <Recycle size={32} strokeWidth={1.5} />
+            <div className="auth-logo"><Recycle size={32} /></div>
+            <div className="auth-brand-text">
+              <span className="auth-brand-name">CleanGuard Campus</span>
+              <span className="auth-brand-sub jntuh-glow">JNTUHUCESTH</span>
             </div>
-            <span className="auth-brand-name">EcoCampus</span>
           </div>
+          <h1>Welcome Back! 👋</h1>
           <div className="auth-hero-text">
             <h1>Keep Your<br /><span className="gradient-text">Campus Clean.</span></h1>
             <p>Smart garbage monitoring &amp; real-time reporting system for a healthier, greener campus.</p>
@@ -146,19 +148,6 @@ export default function LoginPage() {
             {/* ── STAFF: Email + Password ─────────────────────────────────── */}
             {loginType === 'staff' && (
               <form onSubmit={handleStaffLogin} className="auth-form">
-                <div style={{
-                  padding: '10px 14px',
-                  background: 'rgba(59,130,246,0.08)',
-                  color: '#60a5fa',
-                  borderRadius: '8px',
-                  marginBottom: '16px',
-                  fontSize: '0.82rem',
-                  textAlign: 'center',
-                }}>
-                  Demo: <strong>admin@campus.edu</strong> or <strong>coordinator@campus.edu</strong>
-                  &nbsp;· password: <strong>demo1234</strong>
-                </div>
-
                 <div className="input-group">
                   <label className="input-label">Staff Email</label>
                   <div className="input-icon-wrap">

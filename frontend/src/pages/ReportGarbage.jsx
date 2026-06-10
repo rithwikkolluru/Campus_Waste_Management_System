@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import { useAuth } from '../contexts/AuthContext';
@@ -10,6 +10,7 @@ import usePoints from '../hooks/usePoints';
 import './Dashboard.css';
 import CameraCapture from '../components/CameraCapture';
 import LocationVerifier from '../components/LocationVerifier';
+import ZoneWarning from '../components/ZoneWarning';
 
 const ZONES = [
   { name: 'Hostel Area',    emoji: '🏠' },
@@ -81,11 +82,46 @@ export default function ReportGarbage() {
   const [locationVerified, setLocationVerified] = useState(false);
   const [coords, setCoords] = useState({ lat: null, lng: null, accuracy: null });
   const [locationError, setLocationError] = useState(null);
+  const [zoneStatus, setZoneStatus] = useState(null);
+  const [zoneAnnouncements, setZoneAnnouncements] = useState([]);
 
-  const handleLocationVerified = ({ lat, lng, accuracy }) => {
+  useEffect(() => {
+    if (!zone) {
+      setZoneAnnouncements([]);
+      return;
+    }
+    const zoneId = ZONES.findIndex(z => z.name === zone) + 1;
+    fetch(`http://localhost:8000/api/zones/announcements/${zoneId}`)
+      .then(res => {
+        if (res.ok) return res.json();
+        throw new Error('Failed to fetch announcements');
+      })
+      .then(data => {
+        setZoneAnnouncements(data.announcements || []);
+      })
+      .catch(err => {
+        console.error('Zone announcements error:', err);
+        setZoneAnnouncements([]);
+      });
+  }, [zone]);
+
+  const handleLocationVerified = async ({ lat, lng, accuracy }) => {
     setLocationVerified(true);
     setCoords({ lat, lng, accuracy });
     setLocationError(null);
+
+    // Fetch zone status
+    try {
+      const res = await fetch(`http://localhost:8000/api/zones/check-status?lat=${lat}&lng=${lng}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setZoneStatus(data);
+      }
+    } catch (err) {
+      console.error('Failed to check zone status', err);
+    }
   };
 
   const handleLocationFailed = (error) => {
@@ -267,6 +303,25 @@ export default function ReportGarbage() {
               onLocationVerified={handleLocationVerified}
               onLocationFailed={handleLocationFailed}
             />
+
+            <ZoneWarning zoneStatus={zoneStatus} />
+
+            {zoneAnnouncements.length > 0 && (
+              <div style={{
+                padding: '14px 18px',
+                background: 'rgba(59,130,246,0.08)',
+                border: '1px solid rgba(59,130,246,0.2)',
+                borderRadius: '10px',
+                marginBottom: '16px',
+              }}>
+                <div style={{ fontWeight: 700, color: '#60a5fa', fontSize: '0.85rem', marginBottom: '6px' }}>📢 Zone Coordinator Notice</div>
+                {zoneAnnouncements.map(a => (
+                  <div key={a.id} style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                    <strong>{a.title}:</strong> {a.message}
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* ── Image Upload ───────────────────────────────────────────── */}
             <div className="form-section">

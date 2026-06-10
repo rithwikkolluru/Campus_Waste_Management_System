@@ -307,3 +307,53 @@
     position: static;
   }
 }
+
+/* Tablet portrait */
+@media (max-width: 768px) {
+  .notif-layout { gap: 14px; }
+  .notif-card { padding: 14px 16px; gap: 12px; }
+  .notif-card-icon { width: 40px; height: 40px; border-radius: 10px; font-size: 1.1rem; }
+  .notif-card-title { font-size: 0.85rem; }
+  .notif-card-msg { font-size: 0.8rem; }
+  .notif-toolbar { flex-wrap: wrap; gap: 8px; }
+  .notif-empty { padding: 48px 20px; }
+  .notif-pref-row { gap: 10px; }
+  .workflow-diagram { max-width: 220px; }
+  .workflow-circle { width: 50px; height: 50px; }
+  .workflow-label { font-size: 0.76rem; }
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+  .notif-layout { gap: 10px; }
+  .notif-card { padding: 12px 14px; gap: 10px; flex-wrap: wrap; }
+  .notif-card-icon { width: 36px; height: 36px; border-radius: 8px; font-size: 1rem; }
+  .notif-card-header { flex-direction: column; gap: 2px; }
+  .notif-card-time { align-self: flex-start; }
+  .notif-card-title { font-size: 0.82rem; }
+  .notif-card-msg { font-size: 0.78rem; line-height: 1.45; }
+  .notif-card-actions { gap: 6px; }
+  .notif-action-btn { width: 36px; height: 36px; border-radius: 10px; }
+  .notif-cat-btn { padding: 10px 12px; font-size: 0.82rem; min-height: 44px; }
+  .notif-empty { padding: 36px 16px; }
+  .notif-empty h3 { font-size: 1rem; }
+  .notif-empty p { font-size: 0.82rem; }
+  .notif-pref-row { flex-wrap: wrap; gap: 10px; }
+  .notif-pref-icon { width: 36px; height: 36px; border-radius: 8px; }
+  .workflow-diagram { max-width: 200px; }
+  .workflow-circle { width: 44px; height: 44px; }
+  .workflow-label { font-size: 0.72rem; }
+  .workflow-arrow { font-size: 1rem; }
+  .toggle-switch { width: 40px; height: 22px; }
+  .toggle-slider::before { width: 16px; height: 16px; }
+  .toggle-switch input:checked + .toggle-slider::before { transform: translateX(18px); }
+}
+
+/* Small mobile */
+@media (max-width: 375px) {
+  .notif-card { padding: 10px 12px; }
+  .notif-card-icon { width: 32px; height: 32px; font-size: 0.9rem; }
+  .notif-card-title { font-size: 0.78rem; }
+  .notif-card-msg { font-size: 0.75rem; }
+  .notif-empty { padding: 28px 12px; }
+}

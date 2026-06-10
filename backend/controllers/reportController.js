@@ -3,6 +3,8 @@ const pool = db.pool;
 const fs = require('fs');
 const { awardPoints } = require('./rewardsController');
 const { classifyWaste, validateWastePhoto, scoreSeverity } = require('../services/geminiService');
+const zoneService = require('../services/zoneService');
+const { notifyZoneActivity } = require('../services/notificationService');
 
 const VALID_STATUSES = ['reported', 'under_review', 'assigned', 'in_progress', 'resolved'];
 
@@ -199,13 +201,17 @@ exports.submitReport = async (req, res) => {
       }
     }
 
+    // ── Zone Logic ──────────────────────────────────────────────────────────
+    const gpsZoneId = zoneService.getZoneId(parseFloat(latitude), parseFloat(longitude));
+    const zoneStatus = await zoneService.checkZoneStatus(parseFloat(latitude), parseFloat(longitude));
+
     // ── Insert Report ────────────────────────────────────────────────────────
     const reportResult = await dbClient.query(
       `INSERT INTO reports
         (user_id, zone_id, description, waste_type, priority, status,
          ai_severity, ai_priority, ai_description, location,
-         latitude, longitude, location_verified, gps_accuracy)
-       VALUES ($1, $2, $3, $4, $5, 'reported', $6, $7, $8, $9, $10, $11, $12, $13)
+         latitude, longitude, location_verified, gps_accuracy, gps_zone_id, zone_report_count)
+       VALUES ($1, $2, $3, $4, $5, 'reported', $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
        RETURNING id`,
       [
         userId,
@@ -220,7 +226,9 @@ exports.submitReport = async (req, res) => {
         parseFloat(latitude),
         parseFloat(longitude),
         true,
-        gps_accuracy ? parseInt(gps_accuracy, 10) : null
+        gps_accuracy ? parseInt(gps_accuracy, 10) : null,
+        gpsZoneId,
+        zoneStatus.reportCount + 1
       ]
     );
 
@@ -257,10 +265,33 @@ exports.submitReport = async (req, res) => {
       if (photoPoints.awarded) { totalPointsEarned += 5; photoPointsEarned = 5; }
     }
 
+    // Update Zone Service
+    const activeCount = await zoneService.updateZoneAfterReport(gpsZoneId, parseFloat(latitude), parseFloat(longitude), userId, reportId, dbClient);
+    if (activeCount >= zoneService.ZONE_WARNING_THRESHOLD && activeCount < zoneService.ZONE_WARNING_THRESHOLD + 2) {
+      // notify others in the zone when it hits the threshold
+      await notifyZoneActivity(gpsZoneId, activeCount);
+    }
+
     // ── Award Report Points ─────────────────────────────────────────────────
     let reportPointsEarned = 0;
-    const reportPoints = await awardPoints(userId, 10, 'report_submit', reportId, dbClient);
-    if (reportPoints.awarded) { totalPointsEarned += 10; reportPointsEarned = 10; }
+    const baseReportPoints = 10;
+    const finalPoints = Math.round(baseReportPoints * zoneStatus.pointsMultiplier);
+
+    if (finalPoints > 0) {
+      const reportPoints = await awardPoints(userId, finalPoints, 'report_submit', reportId, dbClient);
+      if (reportPoints.awarded) { totalPointsEarned += finalPoints; reportPointsEarned = finalPoints; }
+    }
+
+    // ── Update User Stats ───────────────────────────────────────────────────
+    await dbClient.query(
+      `UPDATE users SET 
+         reports_count = reports_count + 1,
+         weekly_points = COALESCE(weekly_points, 0) + $1,
+         monthly_points = COALESCE(monthly_points, 0) + $1,
+         last_report_date = CURRENT_DATE
+       WHERE id = $2`,
+      [totalPointsEarned, userId]
+    );
 
     // ── Get updated total ──────────────────────────────────────────────────
     const userResult = await dbClient.query(
@@ -277,9 +308,11 @@ exports.submitReport = async (req, res) => {
       photoPointsEarned,
       reportPointsEarned,
       newTotalPoints: userResult.rows[0]?.total_points || 0,
+      zoneMessage: zoneStatus.message,
+      zoneMultiplier: zoneStatus.pointsMultiplier,
       message: totalPointsEarned > 0
         ? `Report submitted! You earned +${totalPointsEarned} points 🌱`
-        : 'Report submitted! (Daily points limit reached)',
+        : 'Report submitted! (Daily points limit reached or area heavily reported)',
       aiResult: aiData ? {
         wasteType:   aiData.classification?.wasteType   || finalWasteType,
         binColor:    aiData.classification?.binColor     || 'Black',

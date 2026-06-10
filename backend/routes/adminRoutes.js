@@ -4,6 +4,8 @@ const db       = require('../config/db');
 const pool     = db.pool;
 const { authenticate, requireAdmin } = require('../middleware/authMiddleware');
 const { generateWeeklyReport } = require('../services/geminiService');
+const zoneService = require('../services/zoneService');
+const notificationService = require('../services/notificationService');
 
 // ── Helper: gather last-7-days data ─────────────────────────────────────────
 const fetchWeekData = async () => {
@@ -138,7 +140,13 @@ router.patch('/reports/:id/status', authenticate, requireAdmin, async (req, res)
     if (status === 'resolved') {
       const { awardPoints } = require('../controllers/rewardsController');
       await awardPoints(result.rows[0].user_id, 15, 'report_verified', id, dbClient);
+      
+      // Resolve zone and award bonus to all reporters in that zone
+      await zoneService.resolveZoneAndAwardBonus(id);
     }
+    
+    // Notify the reporter
+    await notificationService.notifyReportStatus(result.rows[0].user_id, id, status, result.rows[0].location || 'Campus');
 
     await dbClient.query('COMMIT');
     res.json({ success: true, report: result.rows[0] });

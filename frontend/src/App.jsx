@@ -5,6 +5,7 @@ import StudentDashboard from './pages/StudentDashboard';
 import ReportGarbage from './pages/ReportGarbage';
 import CoordinatorDashboard from './pages/CoordinatorDashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import LeaderboardPage from './pages/LeaderboardPage';
 import NotificationsPage from './pages/NotificationsPage';
 import CampusMapPage from './pages/CampusMapPage';
 import AchievementsPage from './pages/AchievementsPage';
@@ -44,6 +45,11 @@ function App() {
             <Route path="/achievements" element={
               <PrivateRoute roles={['student']}>
                 <AchievementsPage />
+              </PrivateRoute>
+            } />
+            <Route path="/leaderboard" element={
+              <PrivateRoute roles={['student']}>
+                <LeaderboardPage />
               </PrivateRoute>
             } />
             <Route path="/coordinator" element={

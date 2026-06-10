@@ -4,7 +4,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
 import {
   LayoutDashboard, AlertTriangle, MapPin, Bell, Settings,
-  LogOut, Recycle, ChevronDown, Menu, X, Sun, Moon, Trophy, Map
+  LogOut, Recycle, ChevronDown, Menu, X, Sun, Moon, Trophy, Map, Award,
+  ClipboardList, CheckCircle, Package, Megaphone
 } from 'lucide-react';
 import './Sidebar.css';
 
@@ -13,14 +14,18 @@ const NAV_ITEMS = {
     { icon: LayoutDashboard, label: 'Dashboard',      path: '/student',        notifKey: false },
     { icon: AlertTriangle,   label: 'Report Issue',   path: '/report',         notifKey: false },
     { icon: Trophy,          label: 'Achievements',   path: '/achievements',   notifKey: false },
+    { icon: Award,           label: 'Leaderboard',    path: '/leaderboard',    notifKey: false },
     { icon: Map,             label: 'Campus Map',     path: '/map',            notifKey: false },
     { icon: Bell,            label: 'Notifications',  path: '/notifications',  notifKey: true  },
   ],
   coordinator: [
-    { icon: LayoutDashboard, label: 'Dashboard',      path: '/coordinator',     notifKey: false },
-    { icon: AlertTriangle,   label: 'Complaints',     path: '/coordinator',     notifKey: false },
-    { icon: Map,             label: 'Campus Map',     path: '/map',             notifKey: false },
-    { icon: Bell,            label: 'Notifications',  path: '/notifications',   notifKey: true  },
+    { icon: LayoutDashboard, label: 'Dashboard',     path: '/coordinator',                  notifKey: false },
+    { icon: ClipboardList,   label: 'Reports',        path: '/coordinator?tab=reports',       notifKey: false },
+    { icon: CheckCircle,     label: 'Verification',   path: '/coordinator?tab=verification',  notifKey: false },
+    { icon: Map,             label: 'Zone Map',        path: '/coordinator?tab=map',           notifKey: false },
+    { icon: Package,         label: 'Bin Management',  path: '/coordinator?tab=bins',          notifKey: false },
+    { icon: Megaphone,       label: 'Announcements',   path: '/coordinator?tab=announcements',  notifKey: false },
+    { icon: Trophy,          label: 'Leaderboard',     path: '/leaderboard',                   notifKey: false },
   ],
   admin: [
     { icon: LayoutDashboard, label: 'Dashboard',      path: '/admin',           notifKey: false },
@@ -74,7 +79,12 @@ export default function Sidebar() {
           <div className="sidebar-logo">
             <Recycle size={22} strokeWidth={1.5} />
           </div>
-          {!collapsed && <span className="sidebar-brand-name">EcoCampus</span>}
+          {!collapsed && (
+            <div className="sidebar-brand-text">
+              <span className="sidebar-brand-name">CleanGuard Campus</span>
+              <span className="sidebar-brand-sub jntuh-glow">JNTUHUCESTH</span>
+            </div>
+          )}
           <button className="collapse-btn desktop-only" onClick={() => setCollapsed(!collapsed)} id="collapse-sidebar">
             <ChevronDown size={16} style={{ transform: collapsed ? 'rotate(-90deg)' : 'rotate(90deg)', transition: 'transform 0.3s' }} />
           </button>

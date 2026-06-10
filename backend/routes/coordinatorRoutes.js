@@ -1,0 +1,405 @@
+const express = require('express');
+const router = express.Router();
+const pool = require('../config/db').pool;
+const { authenticate, requireCoordinator } = require('../middleware/authMiddleware');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
+// Ensure uploads/verification-photos directory exists
+const verifyDir = path.join(__dirname, '..', 'uploads', 'verification-photos');
+if (!fs.existsSync(verifyDir)) {
+  fs.mkdirSync(verifyDir, { recursive: true });
+}
+
+// Multer storage for verification photos
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, verifyDir),
+  filename: (req, file, cb) => cb(null, `verify-${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname)}`)
+});
+const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
+
+// GET /api/coordinator/reports
+router.get('/reports', authenticate, requireCoordinator, async (req, res) => {
+  try {
+    const coordZone = req.user.assigned_zone;
+    const result = await pool.query(`
+      SELECT r.id, r.description, r.waste_type, r.priority, r.status,
+             r.latitude, r.longitude,
+             r.created_at, r.updated_at, r.sla_deadline,
+             r.verified_photo_url, r.verified_at,
+             r.ai_severity, r.ai_priority, r.ai_description,
+             u.name as reporter_name, u.email as reporter_email,
+             z.name as zone_name,
+             a.staff_id as assigned_worker_id,
+             wu.name as assigned_worker_name,
+             COALESCE(
+               json_agg(
+                 json_build_object('id', rp.id, 'url', rp.file_url)
+               ) FILTER (WHERE rp.id IS NOT NULL), '[]'
+             ) as photos
+      FROM reports r
+      JOIN users u ON r.user_id = u.id
+      LEFT JOIN zones z ON r.zone_id = z.id
+      LEFT JOIN assignments a ON a.report_id = r.id
+      LEFT JOIN users wu ON a.staff_id = wu.id
+      LEFT JOIN report_photos rp ON r.id = rp.report_id
+      ${coordZone ? 'WHERE r.zone_id = $1' : ''}
+      GROUP BY r.id, u.name, u.email, z.name, a.staff_id, wu.name
+      ORDER BY r.created_at DESC
+    `, coordZone ? [coordZone] : []);
+    res.json({ reports: result.rows });
+  } catch (err) {
+    console.error('Coordinator reports error:', err.message);
+    res.status(500).json({ error: 'Failed to fetch reports' });
+  }
+});
+
+// GET /api/coordinator/workers
+router.get('/workers', authenticate, requireCoordinator, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, name, email, assigned_zone, role FROM users WHERE role IN ('staff', 'coordinator') ORDER BY name`
+    );
+    res.json({ workers: result.rows });
+  } catch (err) {
+    console.error('Workers fetch error:', err.message);
+    res.status(500).json({ error: 'Failed to fetch workers' });
+  }
+});
+
+// POST /api/coordinator/assign/:reportId
+router.post('/assign/:reportId', authenticate, requireCoordinator, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { workerId } = req.body;
+    const { reportId } = req.params;
+
+    // Get report to calculate SLA
+    const reportRes = await client.query('SELECT ai_severity, priority FROM reports WHERE id = $1', [reportId]);
+    if (reportRes.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Report not found' });
+    }
+
+    const severity = reportRes.rows[0].ai_severity || 5;
+    let slaHours = 48;
+    if (severity >= 9) slaHours = 2;
+    else if (severity >= 7) slaHours = 6;
+    else if (severity >= 4) slaHours = 24;
+
+    const slaDeadline = new Date(Date.now() + slaHours * 60 * 60 * 1000);
+
+    // Remove old assignment if exists
+    await client.query('DELETE FROM assignments WHERE report_id = $1', [reportId]);
+
+    // Create new assignment
+    await client.query(
+      'INSERT INTO assignments (report_id, staff_id, assigned_by) VALUES ($1, $2, $3)',
+      [reportId, workerId, req.user.userId || req.user.id]
+    );
+
+    // Update report status and SLA
+    await client.query(
+      'UPDATE reports SET status = $1, sla_deadline = $2, updated_at = NOW() WHERE id = $3',
+      ['assigned', slaDeadline, reportId]
+    );
+
+    await client.query('COMMIT');
+    res.json({ success: true, sla_deadline: slaDeadline });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Assignment error:', err.message);
+    res.status(500).json({ error: 'Failed to assign worker' });
+  } finally {
+    client.release();
+  }
+});
+
+// PATCH /api/coordinator/status/:reportId
+router.patch('/status/:reportId', authenticate, requireCoordinator, async (req, res) => {
+  try {
+    const { status } = req.body;
+    const { reportId } = req.params;
+    
+    const current = await pool.query('SELECT status FROM reports WHERE id = $1', [reportId]);
+    if (current.rows.length === 0) return res.status(404).json({ error: 'Report not found' });
+    const oldStatus = current.rows[0].status;
+
+    const result = await pool.query(
+      'UPDATE reports SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
+      [status, reportId]
+    );
+    
+    // Log status change
+    await pool.query(
+      'INSERT INTO report_logs (report_id, old_status, new_status, changed_by) VALUES ($1, $2, $3, $4)',
+      [reportId, oldStatus, status, req.user.userId || req.user.id]
+    );
+    
+    res.json({ success: true, report: result.rows[0] });
+  } catch (err) {
+    console.error('Status update error:', err.message);
+    res.status(500).json({ error: 'Failed to update status' });
+  }
+});
+
+// POST /api/coordinator/verify/:reportId
+router.post('/verify/:reportId', authenticate, requireCoordinator, upload.single('photo'), async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { reportId } = req.params;
+    const { action } = req.body; // 'approve' or 'reject'
+    const photoUrl = req.file ? `/uploads/verification-photos/${req.file.filename}` : null;
+
+    if (action === 'approve') {
+      await client.query(
+        `UPDATE reports SET status = 'resolved', verified_photo_url = $1, verified_at = NOW(), verified_by = $2, updated_at = NOW() WHERE id = $3`,
+        [photoUrl, req.user.userId || req.user.id, reportId]
+      );
+      
+      // Award points to reporter
+      const reportRes = await client.query('SELECT user_id, description FROM reports WHERE id = $1', [reportId]);
+      if (reportRes.rows.length > 0) {
+        const { awardPoints } = require('../controllers/rewardsController');
+        const reporterId = reportRes.rows[0].user_id;
+        const description = reportRes.rows[0].description || 'Garbage Cleaned';
+        
+        await awardPoints(reporterId, 15, 'report_verified', reportId, client);
+        
+        // Notify reporter
+        const notificationService = require('../services/notificationService');
+        await notificationService.notifyReportStatus(reporterId, reportId, 'resolved', description);
+      }
+    } else {
+      await client.query(
+        `UPDATE reports SET status = 'assigned', updated_at = NOW() WHERE id = $1`,
+        [reportId]
+      );
+    }
+
+    await client.query('COMMIT');
+    res.json({ success: true, action });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Verification error:', err.message);
+    res.status(500).json({ error: 'Failed to verify report' });
+  } finally {
+    client.release();
+  }
+});
+
+// GET /api/coordinator/bins
+router.get('/bins', authenticate, requireCoordinator, async (req, res) => {
+  try {
+    const coordZone = req.user.assigned_zone;
+    const result = await pool.query(
+      `SELECT b.*, z.name as zone_name FROM bins b LEFT JOIN zones z ON b.zone_id = z.id ${coordZone ? 'WHERE b.zone_id = $1' : ''} ORDER BY b.created_at DESC`,
+      coordZone ? [coordZone] : []
+    );
+    res.json({ bins: result.rows });
+  } catch (err) {
+    console.error('Bins fetch error:', err.message);
+    res.status(500).json({ error: 'Failed to fetch bins' });
+  }
+});
+
+// POST /api/coordinator/bins
+router.post('/bins', authenticate, requireCoordinator, async (req, res) => {
+  try {
+    const { zone_id, location_desc, bin_type } = req.body;
+    const targetZoneId = zone_id || req.user.assigned_zone;
+    
+    if (!targetZoneId) {
+      return res.status(400).json({ error: 'Zone ID is required' });
+    }
+
+    const result = await pool.query(
+      'INSERT INTO bins (zone_id, location_desc, bin_type) VALUES ($1, $2, $3) RETURNING *',
+      [targetZoneId, location_desc, bin_type || 'general']
+    );
+    res.json({ success: true, bin: result.rows[0] });
+  } catch (err) {
+    console.error('Bin create error:', err.message);
+    res.status(500).json({ error: 'Failed to create bin' });
+  }
+});
+
+// PATCH /api/coordinator/bins/:id
+router.patch('/bins/:id', authenticate, requireCoordinator, async (req, res) => {
+  try {
+    const { fill_level, status } = req.body;
+    const updates = [];
+    const values = [];
+    let idx = 1;
+    if (fill_level !== undefined) { 
+      updates.push(`fill_level = $${idx++}`); 
+      values.push(fill_level); 
+    }
+    if (status) { 
+      updates.push(`status = $${idx++}`); 
+      values.push(status); 
+    }
+    if (status === 'active' && fill_level === 0) { 
+      updates.push(`last_emptied = NOW()`); 
+    }
+    updates.push(`updated_at = NOW()`);
+    values.push(req.params.id);
+    
+    const result = await pool.query(
+      `UPDATE bins SET ${updates.join(', ')} WHERE id = $${idx} RETURNING *`,
+      values
+    );
+    res.json({ success: true, bin: result.rows[0] });
+  } catch (err) {
+    console.error('Bin update error:', err.message);
+    res.status(500).json({ error: 'Failed to update bin' });
+  }
+});
+
+// GET /api/coordinator/supply-requests
+router.get('/supply-requests', authenticate, requireCoordinator, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT sr.*, z.name as zone_name FROM supply_requests sr LEFT JOIN zones z ON sr.zone_id = z.id WHERE sr.coordinator_id = $1 ORDER BY sr.created_at DESC`,
+      [req.user.userId || req.user.id]
+    );
+    res.json({ requests: result.rows });
+  } catch (err) {
+    console.error('Supply requests error:', err.message);
+    res.status(500).json({ error: 'Failed to fetch supply requests' });
+  }
+});
+
+// POST /api/coordinator/supply-requests
+router.post('/supply-requests', authenticate, requireCoordinator, async (req, res) => {
+  try {
+    const { zone_id, item_name, quantity, urgency, notes } = req.body;
+    const targetZoneId = zone_id || req.user.assigned_zone;
+
+    if (!targetZoneId) {
+      return res.status(400).json({ error: 'Zone ID is required' });
+    }
+
+    const result = await pool.query(
+      'INSERT INTO supply_requests (coordinator_id, zone_id, item_name, quantity, urgency, notes) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [req.user.userId || req.user.id, targetZoneId, item_name, quantity || 1, urgency || 'normal', notes]
+    );
+    res.json({ success: true, request: result.rows[0] });
+  } catch (err) {
+    console.error('Supply request error:', err.message);
+    res.status(500).json({ error: 'Failed to create supply request' });
+  }
+});
+
+// GET /api/coordinator/announcements
+router.get('/announcements', authenticate, requireCoordinator, async (req, res) => {
+  try {
+    const coordZone = req.user.assigned_zone;
+    const result = await pool.query(
+      `SELECT a.*, z.name as zone_name FROM announcements a LEFT JOIN zones z ON a.zone_id = z.id ${coordZone ? 'WHERE a.zone_id = $1' : ''} ORDER BY a.created_at DESC`,
+      coordZone ? [coordZone] : []
+    );
+    res.json({ announcements: result.rows });
+  } catch (err) {
+    console.error('Announcements error:', err.message);
+    res.status(500).json({ error: 'Failed to fetch announcements' });
+  }
+});
+
+// POST /api/coordinator/announcements
+router.post('/announcements', authenticate, requireCoordinator, async (req, res) => {
+  try {
+    const { zone_id, title, message, type, expires_at } = req.body;
+    const targetZoneId = zone_id || req.user.assigned_zone;
+
+    if (!targetZoneId) {
+      return res.status(400).json({ error: 'Zone ID is required' });
+    }
+
+    const result = await pool.query(
+      'INSERT INTO announcements (coordinator_id, zone_id, title, message, type, expires_at) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [req.user.userId || req.user.id, targetZoneId, title, message, type || 'info', expires_at || null]
+    );
+    res.json({ success: true, announcement: result.rows[0] });
+  } catch (err) {
+    console.error('Announcement create error:', err.message);
+    res.status(500).json({ error: 'Failed to create announcement' });
+  }
+});
+
+// PATCH /api/coordinator/announcements/:id
+router.patch('/announcements/:id', authenticate, requireCoordinator, async (req, res) => {
+  try {
+    const { is_active } = req.body;
+    const result = await pool.query(
+      'UPDATE announcements SET is_active = $1 WHERE id = $2 RETURNING *',
+      [is_active, req.params.id]
+    );
+    res.json({ success: true, announcement: result.rows[0] });
+  } catch (err) {
+    console.error('Announcement update error:', err.message);
+    res.status(500).json({ error: 'Failed to update announcement' });
+  }
+});
+
+// DELETE /api/coordinator/announcements/:id
+router.delete('/announcements/:id', authenticate, requireCoordinator, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM announcements WHERE id = $1', [req.params.id]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Announcement delete error:', err.message);
+    res.status(500).json({ error: 'Failed to delete announcement' });
+  }
+});
+
+// GET /api/coordinator/analytics
+router.get('/analytics', authenticate, requireCoordinator, async (req, res) => {
+  try {
+    const coordZone = req.user.assigned_zone;
+    const zoneFilter = coordZone ? 'WHERE r.zone_id = $1' : '';
+    const params = coordZone ? [coordZone] : [];
+
+    const [totalRes, resolvedRes, avgTimeRes, recentRes] = await Promise.all([
+      pool.query(`SELECT COUNT(*) as total FROM reports r ${zoneFilter}`, params),
+      pool.query(`SELECT COUNT(*) as resolved FROM reports r ${zoneFilter} ${coordZone ? 'AND' : 'WHERE'} r.status = 'resolved'`, params),
+      pool.query(`SELECT AVG(EXTRACT(EPOCH FROM (r.updated_at - r.created_at)) / 3600) as avg_hours FROM reports r ${zoneFilter} ${coordZone ? 'AND' : 'WHERE'} r.status = 'resolved'`, params),
+      pool.query(`SELECT COUNT(*) as recent FROM reports r ${zoneFilter} ${coordZone ? 'AND' : 'WHERE'} r.created_at > NOW() - INTERVAL '7 days'`, params),
+    ]);
+
+    const total = parseInt(totalRes.rows[0].total);
+    const resolved = parseInt(resolvedRes.rows[0].resolved);
+    const avgHours = parseFloat(avgTimeRes.rows[0].avg_hours) || 0;
+    const recentCount = parseInt(recentRes.rows[0].recent);
+    
+    // Overdue SLA count
+    const overdueRes = await pool.query(
+      `SELECT COUNT(*) as overdue FROM reports r ${zoneFilter} ${coordZone ? 'AND' : 'WHERE'} r.sla_deadline IS NOT NULL AND r.sla_deadline < NOW() AND r.status != 'resolved'`,
+      params
+    );
+
+    // Active workers count
+    const workersRes = await pool.query(
+      `SELECT COUNT(*) as active_workers FROM users WHERE role = 'staff'`
+    );
+
+    res.json({
+      total,
+      resolved,
+      pending: total - resolved,
+      resolutionRate: total > 0 ? Math.round((resolved / total) * 100) : 0,
+      avgResponseHours: Math.round(avgHours * 10) / 10,
+      recentWeek: recentCount,
+      overdueSLA: parseInt(overdueRes.rows[0].overdue),
+      activeWorkers: parseInt(workersRes.rows[0].active_workers),
+    });
+  } catch (err) {
+    console.error('Analytics error:', err.message);
+    res.status(500).json({ error: 'Failed to fetch analytics' });
+  }
+});
+
+module.exports = router;

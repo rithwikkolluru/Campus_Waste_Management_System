@@ -55,8 +55,11 @@ export default function RegisterPage() {
       <div className="auth-container" style={{ maxWidth: 1000 }}>
         <div className="auth-left">
           <div className="auth-brand">
-            <div className="auth-logo animate-float"><Recycle size={32} strokeWidth={1.5} /></div>
-            <span className="auth-brand-name">EcoCampus</span>
+            <div className="auth-logo"><Recycle size={32} /></div>
+            <div className="auth-brand-text">
+              <span className="auth-brand-name">CleanGuard Campus</span>
+              <span className="auth-brand-sub jntuh-glow">JNTUHUCESTH</span>
+            </div>
           </div>
           <div className="auth-hero-text">
             <h1>Join the<br /><span className="gradient-text">Green Movement.</span></h1>

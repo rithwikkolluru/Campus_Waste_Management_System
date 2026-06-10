@@ -31,6 +31,9 @@ const zoneRoutes    = require('./routes/zoneRoutes');
 const staffRoutes   = require('./routes/staffRoutes');
 const adminRoutes   = require('./routes/adminRoutes');
 const mapsRouter   = require('./routes/maps');
+const notifRoutes   = require('./routes/notifications');
+const leaderboardRoutes = require('./routes/leaderboard');
+const coordinatorRoutes = require('./routes/coordinatorRoutes');
 
 // API Routes
 app.use('/api/auth',    authRoutes);
@@ -38,7 +41,10 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/zones',   zoneRoutes);
 app.use('/api/staff',   staffRoutes);
 app.use('/api/admin',   adminRoutes);
+app.use('/api/coordinator', coordinatorRoutes);
 app.use('/api',         mapsRouter);
+app.use('/api',         notifRoutes);
+app.use('/api',         leaderboardRoutes);
 
 // Catch 404 - Not Found
 app.use((req, res) => {
