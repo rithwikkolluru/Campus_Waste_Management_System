@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import { useAuth } from '../contexts/AuthContext';
 import usePoints from '../hooks/usePoints';
-import { Award, Gift, Target, Trophy, ChevronRight, Lock } from 'lucide-react';
+import { Award, Gift, Target, CheckCircle2, Lock } from 'lucide-react';
 import './Dashboard.css';
 
 export const BADGE_TIERS = [
@@ -29,6 +29,20 @@ export default function AchievementsPage() {
   const token = localStorage.getItem('ecocampus_token');
   const { points } = usePoints(token);
   const totalPoints = points.total_points || 0;
+  const [campusRank, setCampusRank] = useState(null);
+
+  useEffect(() => {
+    if (!token || !user?.id) return;
+    fetch('http://localhost:8000/api/leaderboard?period=all_time', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        const me = data?.leaderboard?.find((s) => Number(s.id) === Number(user.id));
+        if (me) setCampusRank(me.rank);
+      })
+      .catch(() => {});
+  }, [token, user?.id]);
 
   // Milestone logic
   const totalEarnedRs = Math.floor(totalPoints / 1000) * 10;
@@ -86,6 +100,16 @@ export default function AchievementsPage() {
             <h2 style={{ fontSize: '1.8rem', fontWeight: 700, marginBottom: '8px' }}>
               {currentRank.title}
             </h2>
+            {campusRank != null && (
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                background: 'rgba(251, 191, 36, 0.15)', border: '1px solid rgba(251, 191, 36, 0.35)',
+                borderRadius: '20px', padding: '6px 14px', marginBottom: '12px',
+                fontSize: '0.95rem', fontWeight: 600, color: '#fbbf24',
+              }}>
+                🏆 Campus Rank #{campusRank}
+              </div>
+            )}
             <p className="text-muted" style={{ marginBottom: '24px' }}>
               {currentRank.isUltimate 
                 ? "You've achieved the ultimate JNTUH Pride status! Thank you for keeping our campus clean!"

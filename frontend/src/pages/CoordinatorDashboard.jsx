@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import { useAuth } from '../contexts/AuthContext';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { useNotifications } from '../contexts/NotificationContext';
+import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import { 
   RefreshCw, Clock, CheckCircle, XCircle, Users, Package, Megaphone, 
   BarChart3, AlertTriangle, Plus, Trash2, Send, Eye, Map, ClipboardList, TrendingUp
@@ -80,6 +81,7 @@ const SLATimer = ({ deadline }) => {
 
 export default function CoordinatorDashboard() {
   const { user } = useAuth();
+  const { showToast } = useNotifications();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'overview';
 
@@ -269,12 +271,17 @@ export default function CoordinatorDashboard() {
         },
         body: JSON.stringify({ status })
       });
+      const data = await res.json();
       if (res.ok) {
         await fetchReports();
         await fetchAnalytics();
+        showToast({ type: 'success', title: 'Status Updated', message: `Report #${reportId} is now ${status.replace('_', ' ')}.` });
+      } else {
+        showToast({ type: 'error', title: 'Update Failed', message: data.error || 'Could not update report status.' });
       }
     } catch (err) {
       console.error('Status update error:', err);
+      showToast({ type: 'error', title: 'Update Failed', message: 'Network error updating status.' });
     }
   };
 
@@ -297,11 +304,10 @@ export default function CoordinatorDashboard() {
 
       const res = await fetch(`${API_BASE}/api/coordinator/verify/${reportId}`, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`
-        },
+        headers: { Authorization: `Bearer ${token}` },
         body: formData
       });
+      const data = await res.json();
 
       if (res.ok) {
         setSelectedPhoto(null);
@@ -309,9 +315,19 @@ export default function CoordinatorDashboard() {
         setPhotoReportId(null);
         await fetchReports();
         await fetchAnalytics();
+        showToast({
+          type: 'success',
+          title: action === 'approve' ? 'Cleanup Approved' : 'Cleanup Rejected',
+          message: action === 'approve'
+            ? `Report #${reportId} verified. +15 XP awarded to student.`
+            : `Report #${reportId} sent back for re-submission.`,
+        });
+      } else {
+        showToast({ type: 'error', title: 'Verification Failed', message: data.error || 'Could not process verification.' });
       }
     } catch (err) {
       console.error('Verification error:', err);
+      showToast({ type: 'error', title: 'Verification Failed', message: 'Network error during verification.' });
     }
   };
 
@@ -337,6 +353,10 @@ export default function CoordinatorDashboard() {
   // Bin create
   const handleCreateBin = async (e) => {
     e.preventDefault();
+    if (!newBin.zone_id || !newBin.location_desc?.trim()) {
+      showToast({ type: 'error', title: 'Validation Error', message: 'Zone and location description are required.' });
+      return;
+    }
     try {
       const res = await fetch(`${API_BASE}/api/coordinator/bins`, {
         method: 'POST',
@@ -346,18 +366,27 @@ export default function CoordinatorDashboard() {
         },
         body: JSON.stringify(newBin)
       });
+      const data = await res.json();
       if (res.ok) {
         setNewBin({ zone_id: '', location_desc: '', bin_type: 'general' });
         await fetchBins();
+        showToast({ type: 'success', title: 'Bin Deployed', message: 'Waste bin registered successfully.' });
+      } else {
+        showToast({ type: 'error', title: 'Deploy Failed', message: data.error || 'Could not deploy bin.' });
       }
     } catch (err) {
       console.error('Bin create error:', err);
+      showToast({ type: 'error', title: 'Deploy Failed', message: 'Network error deploying bin.' });
     }
   };
 
   // Supply Request create
   const handleCreateSupplyRequest = async (e) => {
     e.preventDefault();
+    if (!newSupplyRequest.zone_id || !newSupplyRequest.item_name?.trim()) {
+      showToast({ type: 'error', title: 'Validation Error', message: 'Zone and supply item are required.' });
+      return;
+    }
     try {
       const res = await fetch(`${API_BASE}/api/coordinator/supply-requests`, {
         method: 'POST',
@@ -367,18 +396,27 @@ export default function CoordinatorDashboard() {
         },
         body: JSON.stringify(newSupplyRequest)
       });
+      const data = await res.json();
       if (res.ok) {
         setNewSupplyRequest({ zone_id: '', item_name: '', quantity: 1, urgency: 'normal', notes: '' });
         await fetchSupplyRequests();
+        showToast({ type: 'success', title: 'Request Submitted', message: 'Supply request sent for approval.' });
+      } else {
+        showToast({ type: 'error', title: 'Request Failed', message: data.error || 'Could not submit supply request.' });
       }
     } catch (err) {
       console.error('Supply request error:', err);
+      showToast({ type: 'error', title: 'Request Failed', message: 'Network error submitting request.' });
     }
   };
 
   // Announcement create
   const handleCreateAnnouncement = async (e) => {
     e.preventDefault();
+    if (!newAnnouncement.zone_id || !newAnnouncement.title?.trim() || !newAnnouncement.message?.trim()) {
+      showToast({ type: 'error', title: 'Validation Error', message: 'Zone, title, and message are required.' });
+      return;
+    }
     try {
       const res = await fetch(`${API_BASE}/api/coordinator/announcements`, {
         method: 'POST',
@@ -388,12 +426,17 @@ export default function CoordinatorDashboard() {
         },
         body: JSON.stringify(newAnnouncement)
       });
+      const data = await res.json();
       if (res.ok) {
         setNewAnnouncement({ zone_id: '', title: '', message: '', type: 'info', expires_at: '' });
         await fetchAnnouncements();
+        showToast({ type: 'success', title: 'Notice Broadcast', message: 'Announcement sent to students and admin.' });
+      } else {
+        showToast({ type: 'error', title: 'Broadcast Failed', message: data.error || 'Could not broadcast announcement.' });
       }
     } catch (err) {
       console.error('Announcement create error:', err);
+      showToast({ type: 'error', title: 'Broadcast Failed', message: 'Network error broadcasting announcement.' });
     }
   };
 
@@ -444,6 +487,15 @@ export default function CoordinatorDashboard() {
     }
   };
 
+  // Hotspot circle color/radius by AI severity (dark red → red → yellow → green)
+  const getHotspotStyle = (severity) => {
+    const s = Number(severity) || 5;
+    if (s >= 9) return { color: '#7f1d1d', fillColor: '#7f1d1d', fillOpacity: 0.35, radius: 55 };
+    if (s >= 7) return { color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.3, radius: 45 };
+    if (s >= 4) return { color: '#eab308', fillColor: '#eab308', fillOpacity: 0.28, radius: 38 };
+    return { color: '#22c55e', fillColor: '#22c55e', fillOpacity: 0.22, radius: 30 };
+  };
+
   // Helper: custom markers for status colors
   const getMarkerIcon = (status) => {
     let color = '#ef4444'; // reported
@@ -472,9 +524,9 @@ export default function CoordinatorDashboard() {
   const overdueSLAReports = reports.filter(r => r.status !== 'resolved' && r.sla_deadline && new Date(r.sla_deadline) < new Date());
 
   return (
-    <div className="app-layout">
+    <div className="app-layout coordinator-layout">
       <Sidebar />
-      <main className="main-content">
+      <main className="main-content coordinator-main">
         
         {/* Banner */}
         <div className="coordinator-header-banner">
@@ -815,6 +867,12 @@ export default function CoordinatorDashboard() {
         {activeTab === 'map' && (
           <div className="glass-card" style={{ padding: '24px', height: '600px', position: 'relative' }}>
             <h3 className="text-lg font-semibold mb-4">Zone Hotspots Map</h3>
+            <div style={{ display: 'flex', gap: '16px', marginBottom: '12px', flexWrap: 'wrap', fontSize: '0.78rem' }}>
+              <span><span style={{ display: 'inline-block', width: 12, height: 12, borderRadius: '50%', background: '#7f1d1d', marginRight: 6 }} />Critical (9+)</span>
+              <span><span style={{ display: 'inline-block', width: 12, height: 12, borderRadius: '50%', background: '#ef4444', marginRight: 6 }} />High (7–8)</span>
+              <span><span style={{ display: 'inline-block', width: 12, height: 12, borderRadius: '50%', background: '#eab308', marginRight: 6 }} />Medium (4–6)</span>
+              <span><span style={{ display: 'inline-block', width: 12, height: 12, borderRadius: '50%', background: '#22c55e', marginRight: 6 }} />Low (&lt;4)</span>
+            </div>
             <div style={{ height: '480px', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--glass-border)' }}>
               <MapContainer
                 center={[17.4920, 78.3910]}
@@ -825,6 +883,25 @@ export default function CoordinatorDashboard() {
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                   attribution='&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> contributors'
                 />
+
+                {reports
+                  .filter(r => r.latitude && r.longitude && r.status !== 'resolved')
+                  .map(r => {
+                    const hotspot = getHotspotStyle(r.ai_severity);
+                    return (
+                      <Circle
+                        key={`circle-${r.id}`}
+                        center={[parseFloat(r.latitude), parseFloat(r.longitude)]}
+                        radius={hotspot.radius}
+                        pathOptions={{
+                          color: hotspot.color,
+                          fillColor: hotspot.fillColor,
+                          fillOpacity: hotspot.fillOpacity,
+                          weight: 2,
+                        }}
+                      />
+                    );
+                  })}
                 
                 {reports
                   .filter(r => r.latitude && r.longitude)
@@ -840,6 +917,7 @@ export default function CoordinatorDashboard() {
                           <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>
                             <strong>Type:</strong> {r.waste_type} <br />
                             <strong>Status:</strong> {r.status} <br />
+                            <strong>Severity:</strong> {r.ai_severity ?? '—'} <br />
                             <strong>Zone:</strong> {r.zone_name}
                           </div>
                           {r.photos && r.photos[0] && (
@@ -1082,6 +1160,7 @@ export default function CoordinatorDashboard() {
                     onChange={(e) => setNewAnnouncement({ ...newAnnouncement, zone_id: e.target.value })}
                   >
                     <option value="">Select Zone...</option>
+                    <option value="all">All Zones</option>
                     {zones.map(z => <option key={z.id} value={z.id}>{z.name}</option>)}
                   </select>
                 </div>

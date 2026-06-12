@@ -1,14 +1,22 @@
 const pool = require('../config/db').pool;
 
 // Create a notification for one user
-const createNotification = async (userId, type, title, message, data = {}) => {
+const createNotification = async (userId, type, title, message, data = {}, client = pool) => {
   try {
-    await pool.query(`
-      INSERT INTO notifications (user_id, type, title, message, data, created_at)
-      VALUES ($1, $2, $3, $4, $5, NOW())
+    await client.query(`
+      INSERT INTO notifications (user_id, type, title, message, data, is_read, created_at)
+      VALUES ($1, $2, $3, $4, $5, false, NOW())
     `, [userId, type, title, message, JSON.stringify(data)]);
   } catch (err) {
     console.error('createNotification error:', err.message);
+  }
+};
+
+// Bulk insert notifications for multiple recipients
+const createBulkNotifications = async (recipientIds, type, title, message, data = {}, client = pool) => {
+  const uniqueIds = [...new Set(recipientIds.filter(Boolean))];
+  for (const userId of uniqueIds) {
+    await createNotification(userId, type, title, message, data, client);
   }
 };
 
@@ -35,7 +43,7 @@ const notifyZoneActivity = async (zoneId, reportCount) => {
 };
 
 // Notify student when their report status changes
-const notifyReportStatus = async (userId, reportId, newStatus, location) => {
+const notifyReportStatus = async (userId, reportId, newStatus, location, client = pool) => {
   const messages = {
     in_progress: {
       title: 'Report In Progress 🔧',
@@ -51,10 +59,69 @@ const notifyReportStatus = async (userId, reportId, newStatus, location) => {
   if (!notif) return;
 
   await createNotification(
-    userId, 'report_status',
-    notif.title, notif.message,
-    { reportId, newStatus }
+    userId,
+    'status_update',
+    notif.title,
+    notif.message,
+    { reportId, newStatus },
+    client
   );
+};
+
+// Notify student with a custom status_update message (verification flow)
+const notifyStatusUpdate = async (userId, reportId, message, client = pool) => {
+  await createNotification(
+    userId,
+    'status_update',
+    `Report #${reportId} Update`,
+    message,
+    { reportId },
+    client
+  );
+};
+
+// Broadcast announcement notifications to students in zone + admin
+const notifyAnnouncement = async (zoneId, title, message, client = pool) => {
+  try {
+    let recipientIds = [];
+    const parsedZoneId = zoneId === 'all' || zoneId == null ? null : parseInt(zoneId, 10);
+
+    if (!parsedZoneId || Number.isNaN(parsedZoneId)) {
+      const students = await client.query(`SELECT id FROM users WHERE role = 'student'`);
+      recipientIds = students.rows.map(r => r.id);
+    } else {
+      // zone_reporters.zone_id is VARCHAR (GPS grid); reports.zone_id is INTEGER — query reports only
+      const zoneUsers = await client.query(
+        `SELECT DISTINCT user_id FROM reports WHERE zone_id = $1`,
+        [parsedZoneId]
+      );
+      recipientIds = zoneUsers.rows.map(r => r.user_id);
+
+      const allStudents = await client.query(`SELECT id FROM users WHERE role = 'student'`);
+      recipientIds = [...new Set([...recipientIds, ...allStudents.rows.map(r => r.id)])];
+    }
+
+    await createBulkNotifications(
+      recipientIds,
+      'announcement',
+      title,
+      message,
+      { zoneId: zoneId || 'all' },
+      client
+    );
+
+    const admins = await client.query(`SELECT id FROM users WHERE role = 'admin'`);
+    await createBulkNotifications(
+      admins.rows.map(r => r.id),
+      'announcement',
+      title,
+      message,
+      { zoneId: zoneId || 'all' },
+      client
+    );
+  } catch (err) {
+    console.error('notifyAnnouncement error:', err.message);
+  }
 };
 
 // Notify student they hit daily points limit
@@ -81,8 +148,11 @@ const sendWeeklySummary = async (userId, weekPoints, weekReports, rank) => {
 
 module.exports = {
   createNotification,
+  createBulkNotifications,
   notifyZoneActivity,
   notifyReportStatus,
+  notifyStatusUpdate,
+  notifyAnnouncement,
   notifyDailyLimit,
   sendWeeklySummary,
 };

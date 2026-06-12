@@ -94,7 +94,7 @@ export default function LeaderboardPage() {
                       </div>
                       <div>
                         <div className="font-semibold text-lg flex items-center gap-2">
-                          {student.name}
+                          {student.name || 'Student'}
                           {isMe && <span className="badge badge-primary text-xs ml-2">You</span>}
                         </div>
                         <div className="text-sm text-muted">

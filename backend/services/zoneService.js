@@ -87,11 +87,10 @@ const updateZoneAfterReport = async (zoneId, lat, lng, userId, reportId, client)
   // Upsert zone row
   await client.query(
     `INSERT INTO report_zones
-       (zone_id, center_lat, center_lng, active_report_count, total_report_count, last_reported_at, created_at)
-     VALUES ($1, $2, $3, 1, 1, NOW(), NOW())
+       (zone_id, center_lat, center_lng, active_report_count, last_reported_at, created_at)
+     VALUES ($1, $2, $3, 1, NOW(), NOW())
      ON CONFLICT (zone_id) DO UPDATE SET
        active_report_count = report_zones.active_report_count + 1,
-       total_report_count  = report_zones.total_report_count  + 1,
        last_reported_at    = NOW()`,
     [zoneId, lat, lng]
   );
@@ -140,9 +139,9 @@ const resolveZoneAndAwardBonus = async (reportId) => {
 
     let bonusCount = 0;
     for (const reporter of reporters.rows) {
-      // Award bonus via points_log
+      // Award bonus via points_logs
       await client.query(
-        `INSERT INTO points_log (user_id, points, action, report_id, created_at)
+        `INSERT INTO points_logs (user_id, points, action, report_id, created_at)
          VALUES ($1, $2, 'zone_bonus', $3, NOW())`,
         [reporter.user_id, ZONE_BONUS_ON_RESOLVE, reportId]
       );

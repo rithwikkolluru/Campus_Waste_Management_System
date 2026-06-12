@@ -112,7 +112,13 @@ export default function Sidebar() {
             <NavLink
               key={`${item.path}-${item.label}`}
               to={item.path}
-              className={({ isActive }) => `sidebar-nav-item ${isActive ? 'active' : ''}`}
+              end={!item.path.includes('?')}
+              className={({ isActive }) => {
+                const isCustomActive = item.path.includes('?') 
+                  ? window.location.pathname + window.location.search === item.path
+                  : isActive;
+                return `sidebar-nav-item ${isCustomActive ? 'active' : ''}`;
+              }}
               id={`nav-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
               onClick={() => setMobileOpen(false)}
             >

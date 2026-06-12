@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Sidebar from '../components/Sidebar';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
 import { STATUS_COLOR, PRIORITY_COLOR, STATUS_FLOW } from '../data/mockData';
 import {
   AlertTriangle, CheckCircle2, Clock, TrendingUp,
-  Plus, Bell, Search, ChevronRight, Star, Award, Target
+  Plus, Bell, Search, ChevronRight, Star, Award, Target, ImageOff
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import usePoints from '../hooks/usePoints';
@@ -17,42 +17,84 @@ import './Dashboard.css';
 export default function StudentDashboard() {
   const { user }  = useAuth();
   const navigate  = useNavigate();
-  const { unreadCount, showToast } = useNotifications();
+  const { unreadCount, showToast, notifications } = useNotifications();
+  const [campusAnnouncements, setCampusAnnouncements] = useState([]);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
   const [loading, setLoading] = useState(true);
   const token = localStorage.getItem('ecocampus_token');
+  const API_BASE = 'http://localhost:8000';
   const { points } = usePoints(token);
 
   const [myReports, setMyReports] = useState([]);
 
+  const formatStatus = (status) => {
+    const map = {
+      resolved: 'Resolved',
+      reported: 'Reported',
+      under_review: 'Under Review',
+      assigned: 'Assigned',
+      in_progress: 'In Progress',
+    };
+    return map[status] || status;
+  };
+
+  const resolvePhotoUrl = (photoUrl, photos) => {
+    const url = photoUrl || photos?.[0]?.url;
+    if (!url) return null;
+    return url.startsWith('http') ? url : `${API_BASE}${url}`;
+  };
+
+  const fetchMyReports = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/reports/my`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const mapped = data.reports.map(r => ({
+          id: `RPT-00${r.id}`,
+          dbId: r.id,
+          zone: r.location || r.zone_name || 'Campus',
+          desc: r.description,
+          type: r.waste_type,
+          status: formatStatus(r.status),
+          priority: r.priority ? r.priority.charAt(0).toUpperCase() + r.priority.slice(1) : 'Low',
+          date: new Date(r.created_at).toLocaleDateString(),
+          photoUrl: resolvePhotoUrl(r.photo_url, r.photos),
+        }));
+        setMyReports(mapped);
+      }
+    } catch (err) {
+      console.error('Failed to fetch reports', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
   useEffect(() => {
-    const fetchMyReports = async () => {
+    fetchMyReports();
+    const interval = setInterval(fetchMyReports, 30000);
+    return () => clearInterval(interval);
+  }, [fetchMyReports]);
+
+  useEffect(() => {
+    const fetchAnnouncements = async () => {
       try {
-        const res = await fetch('http://localhost:8000/api/reports/my', {
-          headers: { Authorization: `Bearer ${token}` }
+        const res = await fetch(`${API_BASE}/api/announcements/active`, {
+          headers: { Authorization: `Bearer ${token}` },
         });
         if (res.ok) {
           const data = await res.json();
-          const mapped = data.reports.map(r => ({
-            id: `RPT-00${r.id}`,
-            dbId: r.id,
-            zone: r.location || r.zone_name || 'Campus',
-            desc: r.description,
-            type: r.waste_type,
-            status: r.status === 'resolved' ? 'Resolved' : r.status === 'reported' ? 'Reported' : r.status,
-            priority: r.priority || 'Low',
-            date: new Date(r.created_at).toLocaleDateString()
-          }));
-          setMyReports(mapped);
+          setCampusAnnouncements(data.announcements || []);
         }
       } catch (err) {
-        console.error('Failed to fetch reports', err);
-      } finally {
-        setLoading(false);
+        console.error('Failed to fetch announcements', err);
       }
     };
-    fetchMyReports();
+    fetchAnnouncements();
+    const interval = setInterval(fetchAnnouncements, 30000);
+    return () => clearInterval(interval);
   }, [token]);
 
   // Welcome toast on first load
@@ -176,8 +218,17 @@ export default function StudentDashboard() {
                   ))}
                 </div>
                 <div className="report-mini-card">
-                  <div className="flex justify-between items-center">
-                    <span className="font-semibold">{latestReport.id}</span>
+                  <div className="flex justify-between items-center gap-3">
+                    <div className="flex items-center gap-3">
+                      {latestReport.photoUrl ? (
+                        <img src={latestReport.photoUrl} alt="Report" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--glass-border)' }} />
+                      ) : (
+                        <div style={{ width: 40, height: 40, borderRadius: 6, background: 'var(--bg-card)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--glass-border)' }}>
+                          <ImageOff size={16} color="var(--text-muted)" />
+                        </div>
+                      )}
+                      <span className="font-semibold">{latestReport.id}</span>
+                    </div>
                     <span className={`badge ${PRIORITY_COLOR[latestReport.priority]}`}>{latestReport.priority}</span>
                   </div>
                   <p className="text-sm text-secondary" style={{ marginTop: '6px' }}>{latestReport.desc}</p>
@@ -196,12 +247,55 @@ export default function StudentDashboard() {
               <h3 className="text-lg font-semibold">Notifications</h3>
               <span className="badge badge-red">{unreadCount > 0 ? `${unreadCount} New` : 'Up to date'}</span>
             </div>
-              {/* Real notifications come from NotificationContext */}
-              <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                {unreadCount === 0 ? 'No new notifications.' : `You have ${unreadCount} unread notification(s).`}
+            {notifications.length === 0 ? (
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No notifications yet.</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {notifications.slice(0, 4).map(n => (
+                  <div key={n.id} style={{
+                    padding: '10px 12px', borderRadius: '8px',
+                    background: n.read ? 'transparent' : 'rgba(59,130,246,0.08)',
+                    border: `1px solid ${n.read ? 'var(--glass-border)' : 'rgba(59,130,246,0.2)'}`,
+                    fontSize: '0.82rem',
+                  }}>
+                    <div style={{ fontWeight: 600, marginBottom: '2px' }}>{n.title}</div>
+                    <div style={{ color: 'var(--text-secondary)', lineHeight: 1.4 }}>{n.message}</div>
+                  </div>
+                ))}
+                <button className="btn btn-outline btn-sm" style={{ alignSelf: 'flex-start' }} onClick={() => navigate('/notifications')}>
+                  View all
+                </button>
               </div>
+            )}
           </div>
         </div>
+
+        {/* Campus Announcements from coordinators */}
+        {campusAnnouncements.length > 0 && (
+          <div className="glass-card mb-6" style={{ padding: '24px' }}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">📢 Campus Announcements</h3>
+              <span className="badge badge-blue">{campusAnnouncements.length} Active</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {campusAnnouncements.slice(0, 5).map(a => (
+                <div key={a.id} style={{
+                  padding: '14px 16px', borderRadius: '10px',
+                  background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.15)',
+                }}>
+                  <div className="flex justify-between items-start gap-3 mb-1">
+                    <strong style={{ fontSize: '0.9rem' }}>{a.title}</strong>
+                    <span className="badge badge-ghost" style={{ fontSize: '0.65rem', textTransform: 'uppercase' }}>{a.zone_name}</span>
+                  </div>
+                  <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>{a.message}</p>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '6px' }}>
+                    {new Date(a.created_at).toLocaleString()}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Complaint history */}
         <div className="glass-card" style={{ padding: '24px' }}>
@@ -229,15 +323,32 @@ export default function StudentDashboard() {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>ID</th><th>Zone</th><th>Type</th><th>Description</th><th>Status</th><th>Priority</th><th>Date</th>
+                  <th>ID</th><th>Photo</th><th>Zone</th><th>Type</th><th>Description</th><th>Status</th><th>Priority</th><th>Date</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.length === 0 ? (
-                  <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '30px' }}>No uploads found</td></tr>
+                  <tr><td colSpan={8} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '30px' }}>No uploads found</td></tr>
                 ) : filtered.map(r => (
                   <tr key={r.id}>
                     <td>{r.id}</td>
+                    <td>
+                      {r.photoUrl ? (
+                        <img
+                          src={r.photoUrl}
+                          alt="Upload"
+                          style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4, border: '1px solid var(--glass-border)' }}
+                        />
+                      ) : (
+                        <div style={{
+                          width: 40, height: 40, borderRadius: 4, background: 'var(--bg-card)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          border: '1px solid var(--glass-border)',
+                        }}>
+                          <ImageOff size={16} color="var(--text-muted)" />
+                        </div>
+                      )}
+                    </td>
                     <td>📍 {r.zone}</td>
                     <td>{r.type}</td>
                     <td style={{ maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.desc}</td>

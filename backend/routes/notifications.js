@@ -67,4 +67,24 @@ router.get('/notifications/unread-count', authenticate, async (req, res) => {
   }
 });
 
+// GET active campus announcements for logged-in student
+router.get('/announcements/active', authenticate, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT a.id, a.title, a.message, a.type, a.created_at, a.expires_at,
+             COALESCE(z.name, 'All Zones') AS zone_name
+      FROM announcements a
+      LEFT JOIN zones z ON a.zone_id = z.id
+      WHERE a.is_active = true
+        AND (a.expires_at IS NULL OR a.expires_at > NOW())
+      ORDER BY a.created_at DESC
+      LIMIT 30
+    `);
+    res.json({ announcements: result.rows });
+  } catch (err) {
+    console.error('Active announcements error:', err.message);
+    res.status(500).json({ error: 'Failed to fetch announcements' });
+  }
+});
+
 module.exports = router;

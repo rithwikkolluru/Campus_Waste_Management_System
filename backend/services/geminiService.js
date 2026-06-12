@@ -1,6 +1,8 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const fs = require('fs');
 
+const MODEL_CHAIN = ['gemini-2.5-flash', 'gemini-2.5-flash-lite'];
+
 // Initialize Gemini - gracefully handle missing API key
 const getGeminiClient = () => {
   if (!process.env.GEMINI_API_KEY) {
@@ -8,6 +10,31 @@ const getGeminiClient = () => {
     return null;
   }
   return new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+};
+
+const isRateLimitError = (err) =>
+  err?.status === 429 ||
+  String(err?.message || '').includes('429') ||
+  String(err?.message || '').toLowerCase().includes('quota');
+
+// Try primary model, fall back to lite when free-tier quota is hit
+const generateWithFallback = async (genAI, parts) => {
+  let lastError;
+  for (const modelName of MODEL_CHAIN) {
+    try {
+      const model = genAI.getGenerativeModel({ model: modelName });
+      const result = await model.generateContent(parts);
+      return result.response.text().trim();
+    } catch (err) {
+      lastError = err;
+      if (isRateLimitError(err)) {
+        console.warn(`Gemini ${modelName} rate limited — trying fallback`);
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw lastError || new Error('All Gemini models unavailable');
 };
 
 // Helper: convert image file to base64 for Gemini
@@ -43,7 +70,6 @@ const classifyWaste = async (imagePath) => {
   }
 
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     const imageData = imageToBase64(imagePath);
     const mimeType = getMimeType(imagePath);
 
@@ -58,12 +84,10 @@ const classifyWaste = async (imagePath) => {
 }
 IMPORTANT: If the image is a selfie, screenshot, stock photo, or anything that is NOT clearly discarded garbage, you MUST set isWaste to false to prevent fraud.`;
 
-    const result = await model.generateContent([
+    const text = await generateWithFallback(genAI, [
       prompt,
-      { inlineData: { data: imageData, mimeType } }
+      { inlineData: { data: imageData, mimeType } },
     ]);
-
-    const text = result.response.text().trim();
     const clean = text.replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(clean);
     
@@ -94,7 +118,6 @@ const validateWastePhoto = async (imagePath, recentDescriptions = []) => {
   }
 
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     const imageData = imageToBase64(imagePath);
     const mimeType = getMimeType(imagePath);
 
@@ -116,12 +139,10 @@ Respond in this exact JSON format only, no other text:
 }
 IMPORTANT: If the image does not unambiguously show discarded garbage or waste meant to be cleaned up on a campus, set "isFake" to true and "isWaste" to false. Do not be lenient.`;
 
-    const result = await model.generateContent([
+    const text = await generateWithFallback(genAI, [
       prompt,
-      { inlineData: { data: imageData, mimeType } }
+      { inlineData: { data: imageData, mimeType } },
     ]);
-
-    const text = result.response.text().trim();
     const clean = text.replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(clean);
 
@@ -145,7 +166,6 @@ const scoreSeverity = async (imagePath) => {
   }
 
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     const imageData = imageToBase64(imagePath);
     const mimeType = getMimeType(imagePath);
 
@@ -160,12 +180,10 @@ Respond in this exact JSON format only, no other text:
 Severity guide: 1-2=tiny litter, 3-4=small pile, 5-6=moderate mess, 
 7-8=large overflow, 9-10=health hazard or huge area affected.`;
 
-    const result = await model.generateContent([
+    const text = await generateWithFallback(genAI, [
       prompt,
-      { inlineData: { data: imageData, mimeType } }
+      { inlineData: { data: imageData, mimeType } },
     ]);
-
-    const text = result.response.text().trim();
     const clean = text.replace(/```json|```/g, '').trim();
     return { ...JSON.parse(clean), aiAvailable: true };
   } catch (err) {
@@ -189,8 +207,6 @@ const generateWeeklyReport = async (reportData) => {
   }
 
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-
     const prompt = `You are analyzing waste management data for a college campus.
 Here is this week's waste report data:
 ${JSON.stringify(reportData, null, 2)}
@@ -208,8 +224,7 @@ Generate a weekly analysis in this exact JSON format only, no other text:
   "urgentAreas": ["areas needing immediate attention"]
 }`;
 
-    const result = await model.generateContent(prompt);
-    const text = result.response.text().trim();
+    const text = await generateWithFallback(genAI, [prompt]);
     const clean = text.replace(/```json|```/g, '').trim();
     return { ...JSON.parse(clean), aiAvailable: true };
   } catch (err) {

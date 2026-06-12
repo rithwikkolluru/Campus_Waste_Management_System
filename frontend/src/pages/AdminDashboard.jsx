@@ -14,6 +14,25 @@ ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarEle
 
 const TABS = ['Overview', 'Reports', 'Zones', 'Users', 'Analytics', 'Weekly AI Report'];
 
+// Normalize DB status into chart categories
+const getStatusCategory = (raw) => {
+  const s = (raw || '').toLowerCase().replace(/\s+/g, '_');
+  if (s === 'resolved') return 'resolved';
+  if (['in_progress', 'assigned', 'cleaning_in_progress', 'assigned_to_staff'].includes(s)) return 'in_progress';
+  return 'pending'; // reported, under_review, and any other open status
+};
+
+const formatDisplayStatus = (raw) => {
+  const map = {
+    resolved: 'Resolved',
+    reported: 'Reported',
+    under_review: 'Under Review',
+    assigned: 'Assigned to Staff',
+    in_progress: 'Cleaning in Progress',
+  };
+  return map[(raw || '').toLowerCase()] || raw;
+};
+
 // ── Severity badge helper ────────────────────────────────────────────────────
 const SeverityBadge = ({ score }) => {
   if (!score) return <span className="badge" style={{ background: 'rgba(107,114,128,0.15)', color: '#9ca3af', fontSize: '0.68rem' }}>N/A</span>;
@@ -46,7 +65,7 @@ export default function AdminDashboard() {
   const fetchAllData = async () => {
     try {
       const [repRes, zoneRes, userRes] = await Promise.all([
-        fetch('http://localhost:8000/api/admin/reports', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('http://localhost:8000/api/admin/reports?all=true', { headers: { Authorization: `Bearer ${token}` } }),
         fetch('http://localhost:8000/api/zones', { headers: { Authorization: `Bearer ${token}` } }),
         fetch('http://localhost:8000/api/admin/users', { headers: { Authorization: `Bearer ${token}` } })
       ]);
@@ -58,11 +77,13 @@ export default function AdminDashboard() {
           dbId:     r.id,
           id:       `RPT-00${r.id}`,
           reporter: r.student_name,
-          zone:     r.location || r.zone_name || 'Campus',
+          zone:     r.zone_name || r.location || 'Campus',
+          zoneId:   r.zone_id,
           desc:     r.description,
           type:     r.waste_type,
           date:     new Date(r.created_at).toLocaleDateString(),
-          status:   r.status === 'resolved' ? 'Resolved' : r.status === 'reported' ? 'Reported' : r.status,
+          rawStatus: r.status,
+          status:   formatDisplayStatus(r.status),
           photoUrl: r.photos?.length > 0 ? `http://localhost:8000${r.photos[0].url}` : null,
           aiWasteType:  r.photos?.[0]?.ai_waste_type  || r.waste_type || null,
           aiBinColor:   r.photos?.[0]?.ai_bin_color   || null,
@@ -80,7 +101,9 @@ export default function AdminDashboard() {
           icon: MOCK_ZONES.find(mz => mz.name === z.name)?.icon || '📍',
           total: parseInt(z.total_reports || 0),
           pending: parseInt(z.pending_reports || 0),
-          resolved: parseInt(z.resolved_reports || 0)
+          resolved: parseInt(z.resolved_reports || 0),
+          inProgress: parseInt(z.inprogress_reports || 0),
+          awaiting: parseInt(z.awaiting_reports || 0),
         })));
       }
 
@@ -124,19 +147,27 @@ export default function AdminDashboard() {
       const res = await fetch(`http://localhost:8000/api/admin/reports/${dbId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ status: newStatus.toLowerCase() })
+        body: JSON.stringify({ status: newStatus.toLowerCase().replace(/\s+/g, '_') })
       });
       if (res.ok) fetchAllData();
     } catch (err) { console.error('Failed to update status', err); }
   };
 
   // ── Stats ──────────────────────────────────────────────────────────────────
+  const statusCounts = reports.reduce((acc, r) => {
+    const cat = getStatusCategory(r.rawStatus || r.status);
+    acc[cat] = (acc[cat] || 0) + 1;
+    return acc;
+  }, { resolved: 0, in_progress: 0, pending: 0 });
+
   const stats = {
     total:    reports.length,
-    resolved: reports.filter(r => r.status === 'Resolved').length,
-    active:   reports.filter(r => r.status !== 'Resolved').length,
+    resolved: statusCounts.resolved,
+    active:   statusCounts.pending + statusCounts.in_progress,
+    pending:  statusCounts.pending,
+    inProgress: statusCounts.in_progress,
     users:    users.length,
-    rate:     reports.length > 0 ? Math.round((reports.filter(r => r.status === 'Resolved').length / reports.length) * 100) : 0,
+    rate:     reports.length > 0 ? Math.round((statusCounts.resolved / reports.length) * 100) : 0,
     avgSeverity: reports.length > 0
       ? (reports.reduce((sum, r) => sum + (r.aiSeverity || 5), 0) / reports.length).toFixed(1)
       : 'N/A',
@@ -152,9 +183,7 @@ export default function AdminDashboard() {
   const doughnutData = {
     labels: ['Resolved', 'In Progress', 'Pending'],
     datasets: [{
-      data: [stats.resolved,
-             reports.filter(r => ['Cleaning in Progress', 'Assigned to Staff', 'in_progress', 'assigned'].includes(r.status)).length,
-             reports.filter(r => ['Reported', 'Under Review', 'reported', 'under_review'].includes(r.status)).length],
+      data: [statusCounts.resolved, statusCounts.in_progress, statusCounts.pending],
       backgroundColor: ['rgba(16,185,129,0.8)', 'rgba(59,130,246,0.8)', 'rgba(239,68,68,0.8)'],
       borderColor: ['#10b981', '#3b82f6', '#ef4444'],
       borderWidth: 2,
@@ -165,7 +194,8 @@ export default function AdminDashboard() {
     labels: zones.map(z => z.name.split(' ')[0]),
     datasets: [
       { label: 'Resolved', data: zones.map(z => z.resolved), backgroundColor: 'rgba(16,185,129,0.75)', borderRadius: 6 },
-      { label: 'Pending',  data: zones.map(z => z.pending),  backgroundColor: 'rgba(239,68,68,0.75)',  borderRadius: 6 },
+      { label: 'In Progress', data: zones.map(z => z.inProgress || 0), backgroundColor: 'rgba(59,130,246,0.75)', borderRadius: 6 },
+      { label: 'Pending', data: zones.map(z => z.awaiting || 0), backgroundColor: 'rgba(239,68,68,0.75)', borderRadius: 6 },
     ]
   };
 
@@ -251,7 +281,13 @@ export default function AdminDashboard() {
             <div className="grid-2 mb-6">
               <div className="glass-card" style={{ padding: '24px' }}>
                 <h3 className="text-lg font-semibold mb-4">Complaint Status Distribution</h3>
-                <div style={{ height: '260px' }}><Doughnut data={doughnutData} options={doughnutOptions} /></div>
+                <div style={{ height: '260px' }}>
+                  <Doughnut
+                    key={`donut-${statusCounts.resolved}-${statusCounts.in_progress}-${statusCounts.pending}`}
+                    data={doughnutData}
+                    options={doughnutOptions}
+                  />
+                </div>
                 <div style={{ textAlign: 'center', marginTop: '12px' }}>
                   <span className="stat-value" style={{ fontSize: '1.4rem' }}>{stats.rate}%</span>
                   <span className="text-muted text-sm"> resolution rate</span>
@@ -259,7 +295,13 @@ export default function AdminDashboard() {
               </div>
               <div className="glass-card" style={{ padding: '24px' }}>
                 <h3 className="text-lg font-semibold mb-4">Zone-wise Report Analysis</h3>
-                <div style={{ height: '260px' }}><Bar data={barData} options={chartOptions} /></div>
+                <div style={{ height: '260px' }}>
+                  <Bar
+                    key={`bar-${zones.map(z => `${z.resolved}-${z.inProgress}-${z.awaiting}`).join('-')}`}
+                    data={barData}
+                    options={chartOptions}
+                  />
+                </div>
               </div>
             </div>
 
@@ -364,7 +406,8 @@ export default function AdminDashboard() {
                 <h4 style={{ fontWeight: 700, marginBottom: '12px' }}>{z.name}</h4>
                 <div className="zone-stats">
                   <div><span className="zone-stat-val text-accent">{z.resolved}</span><span className="zone-stat-label">Done</span></div>
-                  <div><span className="zone-stat-val text-yellow">{z.pending}</span><span className="zone-stat-label">Pending</span></div>
+                  <div><span className="zone-stat-val text-yellow">{z.awaiting || 0}</span><span className="zone-stat-label">Pending</span></div>
+                  <div><span className="zone-stat-val text-blue">{z.inProgress || 0}</span><span className="zone-stat-label">In Progress</span></div>
                   <div><span className="zone-stat-val">{z.total}</span><span className="zone-stat-label">Total</span></div>
                 </div>
                 <div className="zone-bar-wrap" style={{ marginTop: '12px' }}>

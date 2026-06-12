@@ -18,6 +18,35 @@ const storage = multer.diskStorage({
   filename: (req, file, cb) => cb(null, `verify-${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname)}`)
 });
 const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
+const notificationService = require('../services/notificationService');
+
+// Ensure JWT user exists in DB (demo accounts use hardcoded IDs not in users table)
+async function ensureUserInDb(req, client = pool) {
+  const jwtId = req.user.userId || req.user.id;
+  const email = req.user.email || `user${jwtId}@demo.local`;
+  const name = req.user.name || 'Demo User';
+  const role = req.user.role || 'coordinator';
+
+  const byId = await client.query('SELECT id FROM users WHERE id = $1', [jwtId]);
+  if (byId.rows.length > 0) return byId.rows[0].id;
+
+  const byEmail = await client.query('SELECT id FROM users WHERE email = $1', [email]);
+  if (byEmail.rows.length > 0) return byEmail.rows[0].id;
+
+  try {
+    const inserted = await client.query(
+      `INSERT INTO users (id, name, email, role) VALUES ($1, $2, $3, $4) RETURNING id`,
+      [jwtId, name, email, role]
+    );
+    return inserted.rows[0].id;
+  } catch {
+    const inserted = await client.query(
+      `INSERT INTO users (name, email, role) VALUES ($1, $2, $3) RETURNING id`,
+      [name, email, role]
+    );
+    return inserted.rows[0].id;
+  }
+}
 
 // GET /api/coordinator/reports
 router.get('/reports', authenticate, requireCoordinator, async (req, res) => {
@@ -122,22 +151,41 @@ router.patch('/status/:reportId', authenticate, requireCoordinator, async (req, 
   try {
     const { status } = req.body;
     const { reportId } = req.params;
-    
-    const current = await pool.query('SELECT status FROM reports WHERE id = $1', [reportId]);
+    const coordinatorId = await ensureUserInDb(req);
+
+    const current = await pool.query(
+      'SELECT status, user_id, description, location FROM reports WHERE id = $1',
+      [reportId]
+    );
     if (current.rows.length === 0) return res.status(404).json({ error: 'Report not found' });
-    const oldStatus = current.rows[0].status;
+    const { status: oldStatus, user_id: reporterId, description, location } = current.rows[0];
 
     const result = await pool.query(
       'UPDATE reports SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
       [status, reportId]
     );
-    
-    // Log status change
+
     await pool.query(
       'INSERT INTO report_logs (report_id, old_status, new_status, changed_by) VALUES ($1, $2, $3, $4)',
-      [reportId, oldStatus, status, req.user.userId || req.user.id]
+      [reportId, oldStatus, status, coordinatorId]
     );
-    
+
+    const locationLabel = location || description || 'your report';
+    const statusMessages = {
+      under_review: `Your report #${reportId} is now under review.`,
+      assigned: `Your report #${reportId} has been assigned to cleaning staff.`,
+      in_progress: `Your report #${reportId} is now in progress.`,
+      resolved: `Your report #${reportId} has been resolved. Thank you for helping keep campus clean!`,
+      reported: `Your report #${reportId} status was updated to reported.`,
+    };
+    if (reporterId && statusMessages[status]) {
+      await notificationService.notifyStatusUpdate(
+        reporterId,
+        reportId,
+        statusMessages[status]
+      );
+    }
+
     res.json({ success: true, report: result.rows[0] });
   } catch (err) {
     console.error('Status update error:', err.message);
@@ -152,31 +200,49 @@ router.post('/verify/:reportId', authenticate, requireCoordinator, upload.single
     await client.query('BEGIN');
     const { reportId } = req.params;
     const { action } = req.body; // 'approve' or 'reject'
+    const coordinatorId = await ensureUserInDb(req, client);
     const photoUrl = req.file ? `/uploads/verification-photos/${req.file.filename}` : null;
+
+    const reportRes = await client.query(
+      'SELECT user_id, description, location FROM reports WHERE id = $1',
+      [reportId]
+    );
+    if (reportRes.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Report not found' });
+    }
+    const { user_id: reporterId } = reportRes.rows[0];
 
     if (action === 'approve') {
       await client.query(
-        `UPDATE reports SET status = 'resolved', verified_photo_url = $1, verified_at = NOW(), verified_by = $2, updated_at = NOW() WHERE id = $3`,
-        [photoUrl, req.user.userId || req.user.id, reportId]
+        `UPDATE reports SET status = 'resolved', verified = true,
+         verified_photo_url = $1, verified_at = NOW(), verified_by = $2, updated_at = NOW()
+         WHERE id = $3`,
+        [photoUrl, coordinatorId, reportId]
       );
-      
-      // Award points to reporter
-      const reportRes = await client.query('SELECT user_id, description FROM reports WHERE id = $1', [reportId]);
-      if (reportRes.rows.length > 0) {
-        const { awardPoints } = require('../controllers/rewardsController');
-        const reporterId = reportRes.rows[0].user_id;
-        const description = reportRes.rows[0].description || 'Garbage Cleaned';
-        
-        await awardPoints(reporterId, 15, 'report_verified', reportId, client);
-        
-        // Notify reporter
-        const notificationService = require('../services/notificationService');
-        await notificationService.notifyReportStatus(reporterId, reportId, 'resolved', description);
-      }
+
+      const { awardPoints } = require('../controllers/rewardsController');
+      await awardPoints(reporterId, 15, 'report_verified', reportId, client);
+
+      await notificationService.notifyStatusUpdate(
+        reporterId,
+        reportId,
+        `Your report #${reportId} has been verified and cleaned! +15 XP awarded.`,
+        client
+      );
     } else {
       await client.query(
-        `UPDATE reports SET status = 'assigned', updated_at = NOW() WHERE id = $1`,
+        `UPDATE reports SET status = 'in_progress', verified = false,
+         verified_photo_url = NULL, verified_at = NULL, updated_at = NOW()
+         WHERE id = $1`,
         [reportId]
+      );
+
+      await notificationService.notifyStatusUpdate(
+        reporterId,
+        reportId,
+        'Your cleanup proof was rejected. Please re-submit.',
+        client
       );
     }
 
@@ -185,7 +251,7 @@ router.post('/verify/:reportId', authenticate, requireCoordinator, upload.single
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('Verification error:', err.message);
-    res.status(500).json({ error: 'Failed to verify report' });
+    res.status(500).json({ error: err.message || 'Failed to verify report' });
   } finally {
     client.release();
   }
@@ -195,8 +261,9 @@ router.post('/verify/:reportId', authenticate, requireCoordinator, upload.single
 router.get('/bins', authenticate, requireCoordinator, async (req, res) => {
   try {
     const coordZone = req.user.assigned_zone;
+    const zoneClause = coordZone ? 'WHERE b.zone_id = $1 AND b.status = \'active\'' : 'WHERE b.status = \'active\'';
     const result = await pool.query(
-      `SELECT b.*, z.name as zone_name FROM bins b LEFT JOIN zones z ON b.zone_id = z.id ${coordZone ? 'WHERE b.zone_id = $1' : ''} ORDER BY b.created_at DESC`,
+      `SELECT b.*, z.name as zone_name FROM bins b LEFT JOIN zones z ON b.zone_id = z.id ${zoneClause} ORDER BY b.created_at DESC`,
       coordZone ? [coordZone] : []
     );
     res.json({ bins: result.rows });
@@ -209,21 +276,26 @@ router.get('/bins', authenticate, requireCoordinator, async (req, res) => {
 // POST /api/coordinator/bins
 router.post('/bins', authenticate, requireCoordinator, async (req, res) => {
   try {
+    await ensureUserInDb(req);
     const { zone_id, location_desc, bin_type } = req.body;
-    const targetZoneId = zone_id || req.user.assigned_zone;
-    
-    if (!targetZoneId) {
-      return res.status(400).json({ error: 'Zone ID is required' });
+    const targetZoneId = parseInt(zone_id || req.user.assigned_zone, 10);
+
+    if (!targetZoneId || Number.isNaN(targetZoneId)) {
+      return res.status(400).json({ error: 'Please select a target zone.' });
+    }
+    if (!location_desc || !location_desc.trim()) {
+      return res.status(400).json({ error: 'Location description is required.' });
     }
 
     const result = await pool.query(
-      'INSERT INTO bins (zone_id, location_desc, bin_type) VALUES ($1, $2, $3) RETURNING *',
-      [targetZoneId, location_desc, bin_type || 'general']
+      `INSERT INTO bins (zone_id, location_desc, bin_type, fill_level, status, created_at, updated_at)
+       VALUES ($1, $2, $3, 0, 'active', NOW(), NOW()) RETURNING *`,
+      [targetZoneId, location_desc.trim(), bin_type || 'general']
     );
     res.json({ success: true, bin: result.rows[0] });
   } catch (err) {
     console.error('Bin create error:', err.message);
-    res.status(500).json({ error: 'Failed to create bin' });
+    res.status(500).json({ error: err.message || 'Failed to create bin' });
   }
 });
 
@@ -262,9 +334,10 @@ router.patch('/bins/:id', authenticate, requireCoordinator, async (req, res) => 
 // GET /api/coordinator/supply-requests
 router.get('/supply-requests', authenticate, requireCoordinator, async (req, res) => {
   try {
+    const coordinatorId = await ensureUserInDb(req);
     const result = await pool.query(
       `SELECT sr.*, z.name as zone_name FROM supply_requests sr LEFT JOIN zones z ON sr.zone_id = z.id WHERE sr.coordinator_id = $1 ORDER BY sr.created_at DESC`,
-      [req.user.userId || req.user.id]
+      [coordinatorId]
     );
     res.json({ requests: result.rows });
   } catch (err) {
@@ -276,21 +349,27 @@ router.get('/supply-requests', authenticate, requireCoordinator, async (req, res
 // POST /api/coordinator/supply-requests
 router.post('/supply-requests', authenticate, requireCoordinator, async (req, res) => {
   try {
+    const coordinatorId = await ensureUserInDb(req);
     const { zone_id, item_name, quantity, urgency, notes } = req.body;
-    const targetZoneId = zone_id || req.user.assigned_zone;
+    const targetZoneId = parseInt(zone_id || req.user.assigned_zone, 10);
 
-    if (!targetZoneId) {
-      return res.status(400).json({ error: 'Zone ID is required' });
+    if (!targetZoneId || Number.isNaN(targetZoneId)) {
+      return res.status(400).json({ error: 'Please select a zone.' });
+    }
+    if (!item_name || !String(item_name).trim()) {
+      return res.status(400).json({ error: 'Supply item is required.' });
     }
 
+    const qty = parseInt(quantity, 10);
     const result = await pool.query(
-      'INSERT INTO supply_requests (coordinator_id, zone_id, item_name, quantity, urgency, notes) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [req.user.userId || req.user.id, targetZoneId, item_name, quantity || 1, urgency || 'normal', notes]
+      `INSERT INTO supply_requests (coordinator_id, zone_id, item_name, quantity, urgency, notes, status, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, 'pending', NOW(), NOW()) RETURNING *`,
+      [coordinatorId, targetZoneId, String(item_name).trim(), Number.isNaN(qty) ? 1 : qty, urgency || 'normal', notes || '']
     );
     res.json({ success: true, request: result.rows[0] });
   } catch (err) {
-    console.error('Supply request error:', err.message);
-    res.status(500).json({ error: 'Failed to create supply request' });
+    console.error('Supply request error:', err);
+    res.status(500).json({ error: err.message || 'Failed to create supply request' });
   }
 });
 
@@ -312,21 +391,47 @@ router.get('/announcements', authenticate, requireCoordinator, async (req, res) 
 // POST /api/coordinator/announcements
 router.post('/announcements', authenticate, requireCoordinator, async (req, res) => {
   try {
+    const coordinatorId = await ensureUserInDb(req);
     const { zone_id, title, message, type, expires_at } = req.body;
-    const targetZoneId = zone_id || req.user.assigned_zone;
 
-    if (!targetZoneId) {
-      return res.status(400).json({ error: 'Zone ID is required' });
+    if (!title || !String(title).trim()) {
+      return res.status(400).json({ error: 'Announcement title is required.' });
+    }
+    if (!message || !String(message).trim()) {
+      return res.status(400).json({ error: 'Announcement message is required.' });
     }
 
+    const isAllZones = zone_id === 'all' || zone_id === '0';
+    const parsedZoneId = isAllZones ? null : parseInt(zone_id || req.user.assigned_zone, 10);
+
+    if (!isAllZones && (!parsedZoneId || Number.isNaN(parsedZoneId))) {
+      return res.status(400).json({ error: 'Please select a target zone.' });
+    }
+
+    const expiresAt = expires_at ? new Date(expires_at) : null;
+    const expiresValue = expiresAt && !Number.isNaN(expiresAt.getTime()) ? expiresAt : null;
+
     const result = await pool.query(
-      'INSERT INTO announcements (coordinator_id, zone_id, title, message, type, expires_at) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [req.user.userId || req.user.id, targetZoneId, title, message, type || 'info', expires_at || null]
+      `INSERT INTO announcements (coordinator_id, zone_id, title, message, type, expires_at, is_active, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, true, NOW()) RETURNING *`,
+      [coordinatorId, parsedZoneId, String(title).trim(), String(message).trim(), type || 'info', expiresValue]
     );
+
+    // Notify students AFTER save — avoids transaction abort if notification insert fails
+    try {
+      await notificationService.notifyAnnouncement(
+        isAllZones ? 'all' : parsedZoneId,
+        String(title).trim(),
+        String(message).trim()
+      );
+    } catch (notifErr) {
+      console.error('Announcement notification error:', notifErr.message);
+    }
+
     res.json({ success: true, announcement: result.rows[0] });
   } catch (err) {
-    console.error('Announcement create error:', err.message);
-    res.status(500).json({ error: 'Failed to create announcement' });
+    console.error('Announcement create error:', err);
+    res.status(500).json({ error: err.message || 'Failed to create announcement' });
   }
 });
 

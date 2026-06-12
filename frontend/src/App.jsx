@@ -48,7 +48,7 @@ function App() {
               </PrivateRoute>
             } />
             <Route path="/leaderboard" element={
-              <PrivateRoute roles={['student']}>
+              <PrivateRoute roles={['student', 'coordinator']}>
                 <LeaderboardPage />
               </PrivateRoute>
             } />

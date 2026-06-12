@@ -39,15 +39,19 @@ export function AuthProvider({ children }) {
         const res = await fetch('http://localhost:8000/api/auth/me', {
           headers: { Authorization: `Bearer ${token}` }
         });
-        if (!res.ok) {
+        if (res.status === 401) {
+          // Only logout on explicit auth failure, not network errors
           logout();
-        } else {
+        } else if (res.ok) {
           const data = await res.json();
-          setUser(data.user);
-          saveSession(data.user, token);
+          // Merge with existing user to preserve picture/avatar from Google login
+          setUser(prev => ({ ...prev, ...data.user }));
+          saveSession({ ...loadUser(), ...data.user }, token);
         }
+        // On other errors (500, network) keep existing session silently
       } catch (err) {
-        console.error('Session verify failed', err);
+        // Network error — keep existing session, don't logout
+        console.warn('Session verify skipped (network):', err.message);
       }
     };
     verifyToken();

@@ -4,7 +4,7 @@ const fs = require('fs');
 const { awardPoints } = require('./rewardsController');
 const { classifyWaste, validateWastePhoto, scoreSeverity } = require('../services/geminiService');
 const zoneService = require('../services/zoneService');
-const { notifyZoneActivity } = require('../services/notificationService');
+const { notifyZoneActivity, createNotification } = require('../services/notificationService');
 
 const VALID_STATUSES = ['reported', 'under_review', 'assigned', 'in_progress', 'resolved'];
 
@@ -49,6 +49,12 @@ exports.getMyReports = async (req, res) => {
     const queryText = `
       SELECT r.*,
              COALESCE(z.name, 'Unknown') AS zone_name,
+             (
+               SELECT rp.file_url FROM report_photos rp
+               WHERE rp.report_id = r.id
+               ORDER BY rp.uploaded_at ASC NULLS LAST, rp.id ASC
+               LIMIT 1
+             ) AS photo_url,
              COALESCE(
                json_agg(
                  json_build_object('id', rp.id, 'url', rp.file_url, 'at', rp.uploaded_at)
@@ -261,6 +267,13 @@ exports.submitReport = async (req, res) => {
         ]
       );
 
+      // Legacy table + reports.image_url (visible in pgAdmin report_images)
+      await dbClient.query(
+        `INSERT INTO report_images (report_id, image_url, uploaded_at) VALUES ($1, $2, NOW())`,
+        [reportId, photoUrl]
+      );
+      await dbClient.query(`UPDATE reports SET image_url = $1 WHERE id = $2`, [photoUrl, reportId]);
+
       const photoPoints = await awardPoints(userId, 5, 'photo_upload', reportId, dbClient);
       if (photoPoints.awarded) { totalPointsEarned += 5; photoPointsEarned = 5; }
     }
@@ -298,6 +311,17 @@ exports.submitReport = async (req, res) => {
       'SELECT total_points FROM users WHERE id = $1', [userId]
     );
 
+    await createNotification(
+      userId,
+      'report_submitted',
+      'Report Submitted ✅',
+      totalPointsEarned > 0
+        ? `Your waste report was saved. You earned +${totalPointsEarned} points!`
+        : 'Your waste report was saved successfully.',
+      { reportId, photoUrl, pointsEarned: totalPointsEarned },
+      dbClient
+    );
+
     await dbClient.query('COMMIT');
 
     res.json({
@@ -332,8 +356,11 @@ exports.submitReport = async (req, res) => {
     if (req.file && fs.existsSync(req.file.path)) {
       fs.unlinkSync(req.file.path);
     }
-    console.error('submitReport error:', err.message);
-    res.status(500).json({ error: 'Failed to submit report. Please try again.' });
+    console.error('submitReport error:', err);
+    res.status(500).json({
+      error: 'Failed to submit report. Please try again.',
+      detail: err instanceof Error ? err.stack : JSON.stringify(err),
+    });
   } finally {
     dbClient.release();
   }

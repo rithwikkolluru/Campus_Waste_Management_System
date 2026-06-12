@@ -22,15 +22,24 @@ router.get('/check-status', authenticate, async (req, res) => {
   }
 });
 
-// Public: get active announcements for a zone
+// Public: get active announcements for a zone (includes campus-wide broadcasts)
 router.get('/announcements/:zoneId', async (req, res) => {
   try {
-    const result = await pool.query(
-      `SELECT id, title, message, type, expires_at FROM announcements 
-       WHERE zone_id = $1 AND is_active = true AND (expires_at IS NULL OR expires_at > NOW())
-       ORDER BY created_at DESC`,
-      [req.params.zoneId]
-    );
+    const zoneId = req.params.zoneId;
+    const isAll = zoneId === 'all' || zoneId === '0';
+    const result = isAll
+      ? await pool.query(
+          `SELECT id, title, message, type, expires_at, created_at FROM announcements
+           WHERE is_active = true AND (expires_at IS NULL OR expires_at > NOW())
+           ORDER BY created_at DESC`
+        )
+      : await pool.query(
+          `SELECT id, title, message, type, expires_at, created_at FROM announcements
+           WHERE is_active = true AND (expires_at IS NULL OR expires_at > NOW())
+             AND (zone_id = $1 OR zone_id IS NULL)
+           ORDER BY created_at DESC`,
+          [zoneId]
+        );
     res.json({ announcements: result.rows });
   } catch (err) {
     console.error('Zone announcements error:', err.message);

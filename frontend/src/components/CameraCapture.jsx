@@ -1,32 +1,25 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
+import { Camera, Image } from 'lucide-react';
 
 const CameraCapture = ({ onPhotoCapture, onError }) => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
-  const [mode, setMode] = useState('idle'); 
-  // modes: idle | camera | preview | gallery
+  const [mode, setMode] = useState('idle');
   const [capturedPhoto, setCapturedPhoto] = useState(null);
   const [capturedPreview, setCapturedPreview] = useState(null);
   const [cameraError, setCameraError] = useState(null);
-  const [facingMode, setFacingMode] = useState('environment'); 
-  // environment = rear camera, user = front camera
+  const [facingMode, setFacingMode] = useState('environment');
 
-  // Start camera stream
   const startCamera = useCallback(async () => {
     setCameraError(null);
     try {
-      // Stop any existing stream first
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(t => t.stop());
       }
 
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: facingMode,
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
+        video: { facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: false,
       });
 
@@ -50,7 +43,6 @@ const CameraCapture = ({ onPhotoCapture, onError }) => {
     }
   }, [facingMode, onError]);
 
-  // Stop camera stream
   const stopCamera = useCallback(() => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(t => t.stop());
@@ -58,7 +50,6 @@ const CameraCapture = ({ onPhotoCapture, onError }) => {
     }
   }, []);
 
-  // Capture photo from video feed
   const capturePhoto = useCallback(() => {
     if (!videoRef.current || !canvasRef.current) return;
 
@@ -66,17 +57,10 @@ const CameraCapture = ({ onPhotoCapture, onError }) => {
     const canvas = canvasRef.current;
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    // Convert canvas to blob file
     canvas.toBlob((blob) => {
-      const file = new File(
-        [blob], 
-        `waste-capture-${Date.now()}.jpg`,
-        { type: 'image/jpeg' }
-      );
+      const file = new File([blob], `waste-capture-${Date.now()}.jpg`, { type: 'image/jpeg' });
       const previewUrl = URL.createObjectURL(blob);
       setCapturedPhoto(file);
       setCapturedPreview(previewUrl);
@@ -85,21 +69,20 @@ const CameraCapture = ({ onPhotoCapture, onError }) => {
     }, 'image/jpeg', 0.85);
   }, [stopCamera]);
 
-  // Use captured photo
   const usePhoto = useCallback(() => {
-    if (capturedPhoto) {
-      onPhotoCapture(capturedPhoto, capturedPreview);
-    }
+    if (!capturedPhoto) return;
+    onPhotoCapture(capturedPhoto, capturedPreview);
+    setCapturedPhoto(null);
+    setCapturedPreview(null);
+    setMode('idle');
   }, [capturedPhoto, capturedPreview, onPhotoCapture]);
 
-  // Retake photo
   const retakePhoto = useCallback(() => {
     setCapturedPhoto(null);
     setCapturedPreview(null);
     startCamera();
   }, [startCamera]);
 
-  // Switch between front and rear camera (mobile)
   const switchCamera = useCallback(() => {
     const newFacing = facingMode === 'environment' ? 'user' : 'environment';
     setFacingMode(newFacing);
@@ -109,53 +92,37 @@ const CameraCapture = ({ onPhotoCapture, onError }) => {
     }
   }, [facingMode, mode, stopCamera, startCamera]);
 
-  // Gallery upload fallback
   const handleGalleryUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    const previewUrl = URL.createObjectURL(file);
-    onPhotoCapture(file, previewUrl);
+    onPhotoCapture(file, URL.createObjectURL(file));
+    e.target.value = '';
   };
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => stopCamera();
-  }, [stopCamera]);
+  useEffect(() => () => stopCamera(), [stopCamera]);
 
-  // IDLE STATE — show start buttons
   if (mode === 'idle') {
     return (
-      <div className="camera-container">
-        {cameraError && (
-          <div className="camera-error">
-            ⚠️ {cameraError}
-          </div>
-        )}
-        <div className="camera-options">
-          <button
-            onClick={startCamera}
-            className="btn-camera-start"
-            type="button"
-          >
-            📸 Open Camera
-          </button>
-          <span className="camera-divider">or</span>
-          <label className="btn-gallery" htmlFor="gallery-input">
-            🖼️ Upload from Gallery
-          </label>
-          <input
-            id="gallery-input"
-            type="file"
-            accept="image/*"
-            onChange={handleGalleryUpload}
-            style={{ display: 'none' }}
-          />
-        </div>
+      <div className="upload-capture-section">
+        {cameraError && <div className="camera-error">⚠️ {cameraError}</div>}
+        <button type="button" onClick={startCamera} className="btn-upload-camera">
+          <Camera size={20} /> Open Camera
+        </button>
+        <div className="upload-or-divider"><span>OR</span></div>
+        <label className="btn-upload-gallery" htmlFor="gallery-input">
+          <Image size={20} /> Upload from Gallery
+        </label>
+        <input
+          id="gallery-input"
+          type="file"
+          accept="image/*"
+          onChange={handleGalleryUpload}
+          style={{ display: 'none' }}
+        />
       </div>
     );
   }
 
-  // CAMERA STATE — live feed
   if (mode === 'camera') {
     return (
       <div className="camera-container">
@@ -165,94 +132,31 @@ const CameraCapture = ({ onPhotoCapture, onError }) => {
             autoPlay
             playsInline
             muted
-            style={{
-              width: '100%',
-              maxHeight: '400px',
-              objectFit: 'cover',
-              borderRadius: '12px',
-              display: 'block',
-            }}
+            style={{ width: '100%', maxHeight: '400px', objectFit: 'cover', borderRadius: '12px', display: 'block' }}
           />
-          {/* Overlay guide frame */}
           <div className="camera-guide-frame" />
         </div>
-
         <canvas ref={canvasRef} style={{ display: 'none' }} />
-
         <div className="camera-controls">
-          <button
-            onClick={stopCamera}
-            className="btn-camera-cancel"
-            type="button"
-          >
-            ✕ Cancel
-          </button>
-
-          <button
-            onClick={capturePhoto}
-            className="btn-capture"
-            type="button"
-          >
-            <span className="capture-circle" />
-          </button>
-
-          <button
-            onClick={switchCamera}
-            className="btn-switch-camera"
-            type="button"
-          >
-            🔄 Flip
-          </button>
+          <button onClick={() => { stopCamera(); setMode('idle'); }} className="btn-camera-cancel" type="button">✕ Cancel</button>
+          <button onClick={capturePhoto} className="btn-capture" type="button"><span className="capture-circle" /></button>
+          <button onClick={switchCamera} className="btn-switch-camera" type="button">🔄 Flip</button>
         </div>
-
-        <p style={{ 
-          textAlign: 'center', 
-          fontSize: '13px', 
-          color: '#888',
-          marginTop: '8px' 
-        }}>
-          Point camera at the waste area
-        </p>
+        <p style={{ textAlign: 'center', fontSize: '13px', color: '#888', marginTop: '8px' }}>Point camera at the waste area</p>
       </div>
     );
   }
 
-  // PREVIEW STATE — show captured photo
   if (mode === 'preview') {
     return (
       <div className="camera-container">
         <div className="camera-preview">
-          <img
-            src={capturedPreview}
-            alt="Captured waste"
-            style={{
-              width: '100%',
-              maxHeight: '400px',
-              objectFit: 'cover',
-              borderRadius: '12px',
-              display: 'block',
-            }}
-          />
-          <div className="preview-badge">
-            ✓ Photo captured
-          </div>
+          <img src={capturedPreview} alt="Captured waste" style={{ width: '100%', maxHeight: '400px', objectFit: 'cover', borderRadius: '12px', display: 'block' }} />
+          <div className="preview-badge">✓ Photo captured</div>
         </div>
-
         <div className="camera-controls">
-          <button
-            onClick={retakePhoto}
-            className="btn-retake"
-            type="button"
-          >
-            🔄 Retake
-          </button>
-          <button
-            onClick={usePhoto}
-            className="btn-use-photo"
-            type="button"
-          >
-            ✅ Use This Photo
-          </button>
+          <button onClick={retakePhoto} className="btn-retake" type="button">🔄 Retake</button>
+          <button onClick={usePhoto} className="btn-use-photo" type="button">✅ Use This Photo</button>
         </div>
       </div>
     );

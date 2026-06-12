@@ -8,10 +8,11 @@ exports.getZones = async (req, res) => {
     const result = await db.query(`
       SELECT
         z.*,
-        COUNT(r.id)                                           AS total_reports,
-        COUNT(CASE WHEN r.status = 'reported'    THEN 1 END) AS pending_reports,
-        COUNT(CASE WHEN r.status = 'resolved'    THEN 1 END) AS resolved_reports,
-        COUNT(CASE WHEN r.status = 'in_progress' THEN 1 END) AS inprogress_reports
+        COUNT(r.id) AS total_reports,
+        COUNT(CASE WHEN r.status = 'resolved' THEN 1 END) AS resolved_reports,
+        COUNT(CASE WHEN r.status IN ('assigned', 'in_progress') THEN 1 END) AS inprogress_reports,
+        COUNT(CASE WHEN r.status IN ('reported', 'under_review') THEN 1 END) AS awaiting_reports,
+        COUNT(CASE WHEN r.status IS NOT NULL AND r.status != 'resolved' THEN 1 END) AS pending_reports
       FROM zones z
       LEFT JOIN reports r ON r.zone_id = z.id
       GROUP BY z.id, z.name, z.description, z.priority_level, z.created_at

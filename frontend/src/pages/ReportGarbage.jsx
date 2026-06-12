@@ -5,7 +5,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
 import { Upload, MapPin, X, Camera, FileText, Send, ArrowLeft, Star, Sparkles, AlertTriangle, CheckCircle } from 'lucide-react';
 import { validateImageFile, validateReportForm } from '../utils/validation';
-import { generateReportId } from '../utils/helpers';
 import usePoints from '../hooks/usePoints';
 import './Dashboard.css';
 import CameraCapture from '../components/CameraCapture';
@@ -13,12 +12,11 @@ import LocationVerifier from '../components/LocationVerifier';
 import ZoneWarning from '../components/ZoneWarning';
 
 const ZONES = [
-  { name: 'Hostel Area',    emoji: '🏠' },
-  { name: 'Academic Block', emoji: '🏫' },
-  { name: 'Library',        emoji: '📚' },
-  { name: 'Canteen',        emoji: '🍽️' },
-  { name: 'Parking Area',   emoji: '🅿️' },
-  { name: 'Sports Ground',  emoji: '⚽' },
+  { id: 1, name: 'Hostel Area',    emoji: '🏠' },
+  { id: 2, name: 'Canteen',        emoji: '🍽️' },
+  { id: 3, name: 'Academic Block', emoji: '🏫' },
+  { id: 4, name: 'Library',        emoji: '📚' },
+  { id: 5, name: 'Sports Ground',  emoji: '⚽' },
 ];
 
 const WASTE_TYPES = ['Organic', 'Plastic', 'Paper', 'Glass', 'E-Waste', 'Metal', 'Hazardous', 'Mixed', 'General Waste'];
@@ -48,8 +46,15 @@ const compressImage = (file) => new Promise((resolve) => {
     canvas.width   = img.width  * ratio;
     canvas.height  = img.height * ratio;
     canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-    canvas.toBlob((blob) => resolve(new File([blob], file.name, { type: 'image/jpeg' })), 'image/jpeg', 0.7);
+    canvas.toBlob((blob) => {
+      if (blob) {
+        resolve(new File([blob], file.name, { type: 'image/jpeg' }));
+      } else {
+        resolve(file);
+      }
+    }, 'image/jpeg', 0.7);
   };
+  img.onerror = () => resolve(file);
   img.src = URL.createObjectURL(file);
 });
 
@@ -90,7 +95,8 @@ export default function ReportGarbage() {
       setZoneAnnouncements([]);
       return;
     }
-    const zoneId = ZONES.findIndex(z => z.name === zone) + 1;
+    const zoneId = ZONES.find(z => z.name === zone)?.id;
+    if (!zoneId) { setZoneAnnouncements([]); return; }
     fetch(`http://localhost:8000/api/zones/announcements/${zoneId}`)
       .then(res => {
         if (res.ok) return res.json();
@@ -157,21 +163,26 @@ export default function ReportGarbage() {
         body:    formData,
       });
       const data = await res.json();
+      if (!res.ok) {
+        setAiSuggestion({ aiAvailable: false, reason: data.message || data.error || 'Analysis request failed' });
+        return;
+      }
       if (data.success && data.aiResult?.aiAvailable) {
         setAiSuggestion(data.aiResult);
-        // Auto-fill waste type ONLY if user hasn't manually picked one
         if (!wasteType || !userOverride) {
-          // Map AI type to our WASTE_TYPES list (case-insensitive match)
           const matched = WASTE_TYPES.find(w =>
             w.toLowerCase() === (data.aiResult.wasteType || '').toLowerCase()
           );
           if (matched) setWasteType(matched);
         }
       } else {
-        setAiSuggestion({ aiAvailable: false });
+        setAiSuggestion({
+          aiAvailable: false,
+          reason: data.aiResult?.reason || 'AI quota busy — select waste type manually',
+        });
       }
-    } catch {
-      setAiSuggestion({ aiAvailable: false });
+    } catch (err) {
+      setAiSuggestion({ aiAvailable: false, reason: 'Could not reach AI service — select waste type manually' });
     } finally {
       setAiAnalyzing(false);
     }
@@ -202,7 +213,9 @@ export default function ReportGarbage() {
 
     try {
       const formData = new FormData();
-      formData.append('zone_id',     ZONES.findIndex(z => z.name === zone) + 1);
+      const zoneId = ZONES.find(z => z.name === zone)?.id;
+      if (!zoneId) throw new Error('Please select a valid campus zone.');
+      formData.append('zone_id', zoneId);
       formData.append('description', description);
       formData.append('waste_type',  wasteType);
       formData.append('priority',    priority.toLowerCase());
@@ -230,7 +243,13 @@ export default function ReportGarbage() {
         setSuccess(true);
         return;
       }
-      if (!res.ok) throw new Error(data.message || 'Submit failed');
+      if (!res.ok) {
+        throw new Error(data.detail || data.error || data.message || 'Submit failed');
+      }
+
+      if (fileObj && !data.photoUrl) {
+        throw new Error('Photo was not saved to the server. Please try again.');
+      }
 
       setReportResult({
         id:            `RPT-00${data.reportId}`,
@@ -239,22 +258,20 @@ export default function ReportGarbage() {
         reportPoints:  data.reportPointsEarned  || 0,
         aiResult:      data.aiResult            || null,
         newTotalPoints: data.newTotalPoints,
+        photoUrl:      data.photoUrl ? (data.photoUrl.startsWith('http') ? data.photoUrl : `http://localhost:8000${data.photoUrl}`) : null,
       });
 
       if (data.pointsEarned && user) {
         setUser({ ...user, total_points: data.newTotalPoints || (user.total_points || 0) + data.pointsEarned });
       }
       refreshPoints();
+      setSubmitting(false);
+      setSuccess(true);
+      notify({ type: 'success', title: 'Upload Successful!', message: `Report for ${zone} saved to database.`, category: 'report', icon: '📸', duration: 5000 });
     } catch (err) {
-      console.warn('Backend unavailable, using mock submission', err.message);
-      await new Promise(r => setTimeout(r, 1000));
-      setReportResult({ id: generateReportId(), points: 5, aiResult: null });
-      if (user) setUser({ ...user, total_points: (user.total_points || 0) + 5 });
+      setSubmitting(false);
+      notify({ type: 'error', title: 'Upload Failed', message: err.message || 'Could not save report. Check backend is running.', duration: 6000 });
     }
-
-    setSubmitting(false);
-    setSuccess(true);
-    notify({ type: 'success', title: 'Upload Successful!', message: `Report for ${zone} submitted.`, category: 'report', icon: '📸', duration: 5000 });
   };
 
   const resetForm = () => {
@@ -325,12 +342,12 @@ export default function ReportGarbage() {
 
             {/* ── Image Upload ───────────────────────────────────────────── */}
             <div className="form-section">
-              <div className="flex justify-between items-center mb-2">
+              <div className="upload-section-header">
                 <div className="form-section-title mb-0">
                   <Camera size={18} color="var(--accent-green)" /> Upload Garbage Image
                 </div>
-                <div className="badge" style={{ background: 'rgba(16,185,129,0.1)', color: 'var(--accent-green)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <Star size={12} /> +15 Points
+                <div className="points-badge-prominent">
+                  <Star size={14} fill="currentColor" /> +15 POINTS
                 </div>
               </div>
 
@@ -340,15 +357,16 @@ export default function ReportGarbage() {
                 </div>
               ) : (
                 <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
-                  <div style={{ position: 'relative', maxWidth: '260px', flexShrink: 0 }}>
-                    <div className="image-preview">
-                      <img src={preview} alt="Garbage preview" />
-                      <div className="image-preview-overlay">
-                        <button type="button" className="btn btn-danger btn-sm" onClick={() => { setPreview(null); setFileObj(null); setAiSuggestion(null); }}>
-                          <X size={14} /> Remove
-                        </button>
-                      </div>
-                    </div>
+                  <div className="upload-preview-wrap">
+                    <img src={preview} alt="Garbage preview" className="upload-preview-img" />
+                    <button
+                      type="button"
+                      className="upload-preview-remove"
+                      onClick={() => { setPreview(null); setFileObj(null); setAiSuggestion(null); }}
+                      aria-label="Remove image"
+                    >
+                      <X size={16} />
+                    </button>
                     <div style={{ padding: '6px 0', fontSize: '0.78rem', color: 'var(--accent-green)' }}>✓ Image ready for upload</div>
                   </div>
 
@@ -405,6 +423,11 @@ export default function ReportGarbage() {
                         <div style={{ fontSize: '0.8rem', color: '#f59e0b' }}>
                           ⚠️ AI unavailable — please select waste type manually below
                         </div>
+                        {aiSuggestion.reason && (
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '6px' }}>
+                            {aiSuggestion.reason}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -545,7 +568,7 @@ export default function ReportGarbage() {
 
         {/* ── Success / Result Modal ──────────────────────────────────────── */}
         {success && reportResult && (
-          <div className="success-overlay" onClick={() => { setSuccess(false); navigate('/student'); }}>
+          <div className="success-overlay" onClick={() => setSuccess(false)}>
             <div className="glass-card success-card" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px', width: '90%' }}>
 
               {/* FAKE PHOTO */}
@@ -569,6 +592,19 @@ export default function ReportGarbage() {
                   <div className="success-icon">🎉</div>
                   <h2>Report Submitted!</h2>
                   <p>Great job! Your contribution helps keep the campus clean.</p>
+
+                  {reportResult.photoUrl && (
+                    <div style={{ margin: '16px 0', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--glass-border)' }}>
+                      <img
+                        src={reportResult.photoUrl}
+                        alt="Submitted waste"
+                        style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', display: 'block' }}
+                      />
+                      <div style={{ padding: '8px 12px', fontSize: '0.75rem', color: 'var(--accent-green)', background: 'rgba(16,185,129,0.08)' }}>
+                        ✓ Photo saved to database
+                      </div>
+                    </div>
+                  )}
 
                   {/* AI Result Card */}
                   {reportResult.aiResult?.aiAvailable && (
@@ -648,8 +684,8 @@ export default function ReportGarbage() {
                   <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>Report ID: <strong>{reportResult.id}</strong></p>
 
                   <div style={{ marginTop: '20px', display: 'flex', gap: '10px', justifyContent: 'center' }}>
-                    <button className="btn btn-outline" onClick={() => { setSuccess(false); resetForm(); }}>Upload Another</button>
-                    <button className="btn btn-primary" onClick={() => navigate('/student')} id="go-to-dashboard">View Progress</button>
+                    <button type="button" className="btn btn-outline" onClick={() => window.location.reload()}>Upload Another</button>
+                    <button type="button" className="btn btn-primary" onClick={() => window.location.href = '/student'} id="go-to-dashboard">View Progress</button>
                   </div>
                 </>
               )}

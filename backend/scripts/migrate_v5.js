@@ -11,6 +11,7 @@ async function migrate() {
       ALTER TABLE reports ADD COLUMN IF NOT EXISTS verified_photo_url TEXT;
       ALTER TABLE reports ADD COLUMN IF NOT EXISTS verified_at TIMESTAMP;
       ALTER TABLE reports ADD COLUMN IF NOT EXISTS verified_by INTEGER REFERENCES users(id);
+      ALTER TABLE reports ADD COLUMN IF NOT EXISTS verified BOOLEAN DEFAULT false;
     `);
 
     // 2. Add action column to points_logs (bug fix - was missing)
@@ -74,6 +75,13 @@ async function migrate() {
       CREATE INDEX IF NOT EXISTS idx_bins_zone ON bins(zone_id);
       CREATE INDEX IF NOT EXISTS idx_announcements_zone ON announcements(zone_id, is_active);
       CREATE INDEX IF NOT EXISTS idx_supply_requests_coord ON supply_requests(coordinator_id);
+    `);
+
+    // 7. Upgrade notifications table if created by older init_db schema
+    await client.query(`
+      ALTER TABLE notifications ADD COLUMN IF NOT EXISTS type VARCHAR(50);
+      ALTER TABLE notifications ADD COLUMN IF NOT EXISTS title VARCHAR(200);
+      ALTER TABLE notifications ADD COLUMN IF NOT EXISTS data JSONB DEFAULT '{}';
     `);
 
     await client.query('COMMIT');

@@ -53,9 +53,10 @@ const fetchWeekData = async () => {
 
 // ── GET /api/admin/reports ───────────────────────────────────────────────────
 router.get('/reports', authenticate, requireAdmin, async (req, res) => {
-  const { status, page = 1 } = req.query;
-  const limit  = 20;
-  const offset = (page - 1) * limit;
+  const { status, page = 1, all } = req.query;
+  const fetchAll = all === 'true';
+  const limit  = fetchAll ? 10000 : 20;
+  const offset = fetchAll ? 0 : (page - 1) * limit;
 
   try {
     let where  = 'WHERE 1=1';
@@ -66,12 +67,15 @@ router.get('/reports', authenticate, requireAdmin, async (req, res) => {
       where += ` AND r.status = $${params.length}`;
     }
 
+    const limitClause = fetchAll ? '' : `LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+
     const query = `
       SELECT
-        r.id, r.zone_id as location, r.waste_type, r.description,
-        r.status, r.created_at, r.priority,
+        r.id, r.location, r.waste_type, r.description,
+        r.status, r.created_at, r.priority, r.zone_id,
         r.ai_severity, r.ai_priority, r.ai_description,
         u.name as student_name, u.email as student_email,
+        COALESCE(z.name, 'Unknown') AS zone_name,
         COALESCE(
           json_agg(
             json_build_object(
@@ -90,14 +94,15 @@ router.get('/reports', authenticate, requireAdmin, async (req, res) => {
         ) as photos
       FROM reports r
       JOIN users u ON r.user_id = u.id
+      LEFT JOIN zones z ON r.zone_id = z.id
       LEFT JOIN report_photos rp ON r.id = rp.report_id
       ${where}
-      GROUP BY r.id, u.name, u.email
+      GROUP BY r.id, u.name, u.email, z.name
       ORDER BY COALESCE(r.ai_severity, 5) DESC, r.created_at DESC
-      LIMIT $${params.length + 1} OFFSET $${params.length + 2}
+      ${limitClause}
     `;
 
-    params.push(limit, offset);
+    if (!fetchAll) params.push(limit, offset);
     const result = await pool.query(query, params);
     res.json({ reports: result.rows });
   } catch (err) {

@@ -1,25 +1,22 @@
 import { useState, useEffect, useRef } from 'react';
-import { Bell, Check, Trash2, MapPin, Zap } from 'lucide-react';
+import { Bell, Check, Users, Zap } from 'lucide-react';
 import { useNotifications } from '../contexts/NotificationContext';
 import { useNavigate } from 'react-router-dom';
 
 export default function NotificationBell() {
-  const { unreadCount, fetchUnreadCount } = useNotifications();
+  const { unreadCount, fetchUnreadCount, notifications: ctxNotifications } = useNotifications();
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
   const token = localStorage.getItem('ecocampus_token');
+  const API_BASE = 'http://localhost:8000';
 
-  // Load notifications when dropdown opens
   useEffect(() => {
-    if (isOpen) {
-      loadNotifications();
-    }
+    if (isOpen) loadNotifications();
   }, [isOpen]);
 
-  // Click outside to close
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -33,13 +30,12 @@ export default function NotificationBell() {
   const loadNotifications = async () => {
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:8000/api/notifications', {
-        headers: { Authorization: `Bearer ${token}` }
+      const res = await fetch(`${API_BASE}/api/notifications`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
         const data = await res.json();
-        setNotifications(data.notifications);
-        // After loading, we have accurate unread count from the list
+        setNotifications(data.notifications || []);
       }
     } catch (err) {
       console.error('Failed to load notifications', err);
@@ -51,9 +47,9 @@ export default function NotificationBell() {
   const markAsRead = async (id, e) => {
     if (e) e.stopPropagation();
     try {
-      await fetch(`http://localhost:8000/api/notifications/${id}/read`, {
+      await fetch(`${API_BASE}/api/notifications/${id}/read`, {
         method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
       fetchUnreadCount();
@@ -64,9 +60,9 @@ export default function NotificationBell() {
 
   const markAllRead = async () => {
     try {
-      await fetch('http://localhost:8000/api/notifications/read-all', {
+      await fetch(`${API_BASE}/api/notifications/read-all`, {
         method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
       fetchUnreadCount();
@@ -76,24 +72,29 @@ export default function NotificationBell() {
   };
 
   const getIcon = (type) => {
-    switch(type) {
+    switch (type) {
       case 'zone_busy': return <Users size={16} color="#f59e0b" />;
+      case 'status_update':
       case 'report_status': return <Check size={16} color="#10b981" />;
+      case 'announcement': return <Bell size={16} color="#60a5fa" />;
       case 'zone_resolved': return <Zap size={16} color="#a78bfa" />;
       default: return <Bell size={16} color="#60a5fa" />;
     }
   };
 
+  const displayCount = unreadCount || ctxNotifications.filter(n => !n.read).length;
+
   return (
     <div className="notification-bell-container" ref={dropdownRef} style={{ position: 'relative' }}>
-      <button 
-        className="btn btn-ghost btn-icon" 
+      <button
+        className="btn btn-ghost btn-icon"
         onClick={() => setIsOpen(!isOpen)}
         style={{ position: 'relative' }}
+        aria-label="Notifications"
       >
         <Bell size={20} />
-        {unreadCount > 0 && (
-          <span className="notification-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>
+        {displayCount > 0 && (
+          <span className="notification-badge">{displayCount > 9 ? '9+' : displayCount}</span>
         )}
       </button>
 
@@ -101,13 +102,13 @@ export default function NotificationBell() {
         <div className="notification-dropdown glass-card">
           <div className="notification-header flex justify-between items-center">
             <h3 className="font-semibold m-0 text-md">Notifications</h3>
-            {unreadCount > 0 && (
+            {displayCount > 0 && (
               <button className="btn btn-ghost btn-sm text-xs" onClick={markAllRead}>
                 Mark all read
               </button>
             )}
           </div>
-          
+
           <div className="notification-list">
             {loading ? (
               <div className="p-4 text-center text-muted">Loading...</div>
@@ -117,20 +118,18 @@ export default function NotificationBell() {
                 No new notifications
               </div>
             ) : (
-              notifications.map((n) => (
-                <div 
-                  key={n.id} 
+              notifications.slice(0, 8).map((n) => (
+                <div
+                  key={n.id}
                   className={`notification-item ${n.is_read ? 'read' : 'unread'}`}
                   onClick={() => { if (!n.is_read) markAsRead(n.id); }}
                 >
-                  <div className="notification-icon">
-                    {getIcon(n.type)}
-                  </div>
+                  <div className="notification-icon">{getIcon(n.type)}</div>
                   <div className="notification-content">
                     <div className="notification-title">{n.title}</div>
                     <div className="notification-message">{n.message}</div>
                     <div className="notification-time">
-                      {new Date(n.created_at).toLocaleDateString()} at {new Date(n.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                      {new Date(n.created_at).toLocaleDateString()} at {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </div>
                   </div>
                   {!n.is_read && <div className="notification-dot" />}
