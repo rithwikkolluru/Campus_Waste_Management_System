@@ -52,7 +52,6 @@ export default function LoginPage() {
             <div className="auth-logo"><Recycle size={32} /></div>
             <div className="auth-brand-text">
               <span className="auth-brand-name">CleanGuard Campus</span>
-              <span className="auth-brand-sub jntuh-glow">JNTUHUCESTH</span>
             </div>
           </div>
           <h1>Welcome Back! 👋</h1>
@@ -63,7 +62,7 @@ export default function LoginPage() {
           <div className="auth-features">
             {[
               { icon: '🔑', text: 'Google Sign-In for Students' },
-              { icon: '🔒', text: 'Secure Staff Dashboard' },
+              { icon: '🔒', text: 'Secure Dashboards' },
               { icon: '📸', text: 'Upload photos, earn points' },
               { icon: '🤖', text: 'AI-powered waste detection' },
             ].map((f, i) => (
@@ -79,35 +78,9 @@ export default function LoginPage() {
         <div className="auth-right">
           <div className="glass-card auth-form-card">
 
-            {/* Tab switcher */}
-            <div style={{ display: 'flex', gap: '10px', marginBottom: '24px' }}>
-              <button
-                type="button"
-                onClick={() => { setLoginType('student'); setError(''); }}
-                className={`btn ${loginType === 'student' ? 'btn-primary' : 'btn-ghost'}`}
-                style={{ flex: 1 }}
-                id="tab-student"
-              >
-                Student
-              </button>
-              <button
-                type="button"
-                onClick={() => { setLoginType('staff'); setError(''); }}
-                className={`btn ${loginType === 'staff' ? 'btn-primary' : 'btn-ghost'}`}
-                style={{ flex: 1 }}
-                id="tab-staff"
-              >
-                Staff Access
-              </button>
-            </div>
-
             <div className="auth-form-header" style={{ marginBottom: '20px' }}>
               <h2>Welcome Back</h2>
-              <p>
-                {loginType === 'student'
-                  ? 'Sign in with your Google account'
-                  : 'Sign in to access the staff portal'}
-              </p>
+              <p>Sign in with your Google account</p>
             </div>
 
             {error && (
@@ -117,86 +90,33 @@ export default function LoginPage() {
               </div>
             )}
 
-            {/* ── STUDENT: Google login only ──────────────────────────────── */}
-            {loginType === 'student' && (
-              <div>
-                <div style={{
-                  padding: '16px',
-                  background: 'rgba(16,185,129,0.06)',
-                  border: '1px solid rgba(16,185,129,0.2)',
-                  borderRadius: '10px',
-                  marginBottom: '20px',
-                  fontSize: '0.85rem',
-                  color: 'var(--text-secondary)',
-                  textAlign: 'center',
-                  lineHeight: 1.6,
-                }}>
-                  🔑 Use your <strong>Google account</strong> to sign in.<br />
-                  Any Gmail account is accepted.
-                </div>
-
-                <GoogleLoginButton
-                  onSuccess={(data) => {
-                    googleLogin(data.user, data.token);
-                    navigate('/student');
-                  }}
-                  onError={(message) => setError(message)}
-                />
+            {/* ── Google login only ──────────────────────────────── */}
+            <div>
+              <div style={{
+                padding: '16px',
+                background: 'rgba(16,185,129,0.06)',
+                border: '1px solid rgba(16,185,129,0.2)',
+                borderRadius: '10px',
+                marginBottom: '20px',
+                fontSize: '0.85rem',
+                color: 'var(--text-secondary)',
+                textAlign: 'center',
+                lineHeight: 1.6,
+              }}>
+                🔑 Use your <strong>Google account</strong> to sign in.<br />
+                Any Gmail account is accepted.
               </div>
-            )}
 
-            {/* ── STAFF: Email + Password ─────────────────────────────────── */}
-            {loginType === 'staff' && (
-              <form onSubmit={handleStaffLogin} className="auth-form">
-                <div className="input-group">
-                  <label className="input-label">Staff Email</label>
-                  <div className="input-icon-wrap">
-                    <Mail size={16} className="input-icon" />
-                    <input
-                      type="email"
-                      className="input-field input-with-icon"
-                      placeholder="admin@campus.edu"
-                      value={email}
-                      onChange={e => setEmail(e.target.value)}
-                      id="staff-email"
-                      autoComplete="email"
-                    />
-                  </div>
-                </div>
-
-                <div className="input-group">
-                  <label className="input-label">Password</label>
-                  <div className="input-icon-wrap" style={{ position: 'relative' }}>
-                    <Lock size={16} className="input-icon" />
-                    <input
-                      type={showPwd ? 'text' : 'password'}
-                      className="input-field input-with-icon"
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={e => setPassword(e.target.value)}
-                      id="staff-password"
-                      autoComplete="current-password"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPwd(p => !p)}
-                      style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
-                    >
-                      {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  className={`btn btn-primary btn-full btn-lg auth-submit ${loading ? 'loading' : ''}`}
-                  id="staff-login-btn"
-                  disabled={loading}
-                >
-                  {loading ? <><span className="spinner" /> Signing In...</> : <>Staff Log In <ArrowRight size={18} /></>}
-                </button>
-              </form>
-            )}
+              <GoogleLoginButton
+                onSuccess={(data) => {
+                  googleLogin(data.user, data.token);
+                  // Optionally redirect based on role if needed, but default to student dashboard
+                  const paths = { coordinator: '/coordinator', admin: '/admin', student: '/student' };
+                  navigate(paths[data.user.role] || '/student');
+                }}
+                onError={(message) => setError(message)}
+              />
+            </div>
 
             <p className="auth-switch" style={{ marginTop: '24px' }}>
               By logging in, you agree to our Terms &amp; Privacy Policy
