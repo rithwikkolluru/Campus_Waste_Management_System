@@ -133,27 +133,9 @@ exports.submitReport = async (req, res) => {
     });
   }
 
-  const JNTUH_BOUNDS = {
-    north: 17.4960, south: 17.4880,
-    east: 78.3950,  west: 78.3870,
-  };
-
-  const isInsideCampus = (lat, lng) => {
-    return (
-      lat >= JNTUH_BOUNDS.south && lat <= JNTUH_BOUNDS.north &&
-      lng >= JNTUH_BOUNDS.west  && lng <= JNTUH_BOUNDS.east
-    );
-  };
-
-  if (!isInsideCampus(parseFloat(latitude), parseFloat(longitude))) {
-    if (req.file && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
-    }
-    return res.status(403).json({ 
-      error: 'You must be on JNTUH campus to submit a report',
-      code: 'OUTSIDE_CAMPUS'
-    });
-  }
+  // Accept any location
+  const locationVerified = true;
+  const isInsideCampus = true;
 
   const dbClient = await pool.connect();
 

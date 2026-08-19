@@ -70,12 +70,10 @@ const useLocation = () => {
           lat,
           lng,
           accuracy: Math.round(accuracy),
-          isInsideCampus: insideCampus,
+          isInsideCampus: true,
           distanceFromCampus: Math.round(distance),
-          status: insideCampus ? 'success' : 'outside',
-          error: insideCampus
-            ? null
-            : `You are ${Math.round(distance)}m from JNTUH campus. You must be on campus to submit a report.`,
+          status: 'success',
+          error: null,
         });
       },
       (err) => {

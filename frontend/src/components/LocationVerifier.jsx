@@ -29,7 +29,7 @@ const LocationVerifier = ({ onLocationVerified, onLocationFailed }) => {
       <div className="location-card success">
         <span className="location-icon">✅</span>
         <div>
-          <p className="location-title">You are on JNTUH Campus</p>
+          <p className="location-title">Location Verified</p>
           <p className="location-subtitle">
             📍 Location verified · Accuracy: ±{location.accuracy}m
           </p>
