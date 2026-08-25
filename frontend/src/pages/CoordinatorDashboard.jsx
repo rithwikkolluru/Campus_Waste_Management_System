@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
+import { API_BASE_URL } from '../config';
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import { 
   RefreshCw, Clock, CheckCircle, XCircle, Users, Package, Megaphone, 
@@ -115,7 +116,7 @@ export default function CoordinatorDashboard() {
   const [photoReportId, setPhotoReportId] = useState(null);
 
   const token = localStorage.getItem('ecocampus_token');
-  const API_BASE = 'http://localhost:8000';
+  const API_BASE = API_BASE_URL;
 
   const fetchZones = useCallback(async () => {
     try {

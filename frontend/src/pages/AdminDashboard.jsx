@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { API_BASE_URL } from '../config';
 import Sidebar from '../components/Sidebar';
 import { ZONES as MOCK_ZONES, STATUS_COLOR, PRIORITY_COLOR, STATUS_FLOW } from '../data/mockData';
 import {
@@ -65,9 +66,9 @@ export default function AdminDashboard() {
   const fetchAllData = async () => {
     try {
       const [repRes, zoneRes, userRes] = await Promise.all([
-        fetch('http://localhost:8000/api/admin/reports?all=true', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('http://localhost:8000/api/zones', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('http://localhost:8000/api/admin/users', { headers: { Authorization: `Bearer ${token}` } })
+        fetch(`${API_BASE_URL}/api/admin/reports?all=true`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API_BASE_URL}/api/zones`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API_BASE_URL}/api/admin/users`, { headers: { Authorization: `Bearer ${token}` } })
       ]);
       
       if (repRes.ok) {
@@ -84,7 +85,7 @@ export default function AdminDashboard() {
           date:     new Date(r.created_at).toLocaleDateString(),
           rawStatus: r.status,
           status:   formatDisplayStatus(r.status),
-          photoUrl: r.photos?.length > 0 ? `http://localhost:8000${r.photos[0].url}` : null,
+          photoUrl: r.photos?.length > 0 ? `${API_BASE_URL}${r.photos[0].url}` : null,
           aiWasteType:  r.photos?.[0]?.ai_waste_type  || r.waste_type || null,
           aiBinColor:   r.photos?.[0]?.ai_bin_color   || null,
           aiSeverity:   r.ai_severity,
@@ -123,7 +124,7 @@ export default function AdminDashboard() {
   const fetchWeeklyReport = async (refresh = false) => {
     setWeeklyLoading(true);
     try {
-      const url = `http://localhost:8000/api/admin/weekly-report${refresh ? '?refresh=true' : ''}`;
+      const url = `${API_BASE_URL}/api/admin/weekly-report${refresh ? '?refresh=true' : ''}`;
       const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
       if (res.ok) {
         const data = await res.json();
@@ -144,7 +145,7 @@ export default function AdminDashboard() {
   // ── Status change ──────────────────────────────────────────────────────────
   const handleStatusChange = async (dbId, newStatus) => {
     try {
-      const res = await fetch(`http://localhost:8000/api/admin/reports/${dbId}/status`, {
+      const res = await fetch(`${API_BASE_URL}/api/admin/reports/${dbId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status: newStatus.toLowerCase().replace(/\s+/g, '_') })

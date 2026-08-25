@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Sidebar from '../components/Sidebar';
 import { useAuth } from '../contexts/AuthContext';
+import { API_BASE_URL } from '../config';
 import { useNotifications } from '../contexts/NotificationContext';
 import { STATUS_COLOR, PRIORITY_COLOR, STATUS_FLOW } from '../data/mockData';
 import {
@@ -23,7 +24,7 @@ export default function StudentDashboard() {
   const [filterStatus, setFilterStatus] = useState('All');
   const [loading, setLoading] = useState(true);
   const token = localStorage.getItem('ecocampus_token');
-  const API_BASE = 'http://localhost:8000';
+  const API_BASE = API_BASE_URL;
   const { points } = usePoints(token);
 
   const [myReports, setMyReports] = useState([]);
