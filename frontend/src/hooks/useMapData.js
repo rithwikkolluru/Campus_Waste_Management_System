@@ -11,7 +11,7 @@ const useMapData = (token) => {
   const [showMine, setShowMine] = useState(false);
 
   const headers = { Authorization: `Bearer ${token}` };
-  const BASE_URL = 'http://localhost:8000/api';
+  const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
   const fetchMarkers = useCallback(async () => {
     if (!token) return;

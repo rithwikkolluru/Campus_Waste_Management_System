@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import { API_BASE_URL } from '../config';
 
 const AuthContext = createContext(null);
 
@@ -36,7 +37,7 @@ export function AuthProvider({ children }) {
       const token = localStorage.getItem('ecocampus_token');
       if (!token) return;
       try {
-        const res = await fetch('http://localhost:8000/api/auth/me', {
+        const res = await fetch(`${API_BASE_URL}/api/auth/me`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (res.status === 401) {
@@ -66,7 +67,7 @@ export function AuthProvider({ children }) {
   // Staff login — always hits the backend to get a real JWT
   const loginStaff = async (email, password) => {
     try {
-      const res  = await fetch('http://localhost:8000/api/auth/login', {
+      const res  = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ email, password }),

@@ -13,7 +13,7 @@ const usePoints = (token) => {
   const fetchPoints = useCallback(async () => {
     if (!token) return;
     try {
-      const res = await fetch('http://localhost:8000/api/auth/rewards/my-points', {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/auth/rewards/my-points`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
