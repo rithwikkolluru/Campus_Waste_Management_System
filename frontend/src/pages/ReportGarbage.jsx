@@ -6,6 +6,7 @@ import { useNotifications } from '../contexts/NotificationContext';
 import { Upload, MapPin, X, Camera, FileText, Send, ArrowLeft, Star, Sparkles, AlertTriangle, CheckCircle } from 'lucide-react';
 import { validateImageFile, validateReportForm } from '../utils/validation';
 import usePoints from '../hooks/usePoints';
+import { API_BASE_URL } from '../config';
 import './Dashboard.css';
 import CameraCapture from '../components/CameraCapture';
 import LocationVerifier from '../components/LocationVerifier';
@@ -97,7 +98,7 @@ export default function ReportGarbage() {
     }
     const zoneId = ZONES.find(z => z.name === zone)?.id;
     if (!zoneId) { setZoneAnnouncements([]); return; }
-    fetch(`http://localhost:8000/api/zones/announcements/${zoneId}`)
+    fetch(`${API_BASE_URL}/api/zones/announcements/${zoneId}`)
       .then(res => {
         if (res.ok) return res.json();
         throw new Error('Failed to fetch announcements');
@@ -118,7 +119,7 @@ export default function ReportGarbage() {
 
     // Fetch zone status
     try {
-      const res = await fetch(`http://localhost:8000/api/zones/check-status?lat=${lat}&lng=${lng}`, {
+      const res = await fetch(`${API_BASE_URL}/api/zones/check-status?lat=${lat}&lng=${lng}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -157,7 +158,7 @@ export default function ReportGarbage() {
     try {
       const formData = new FormData();
       formData.append('image', file);
-      const res  = await fetch('http://localhost:8000/api/reports/analyze-photo', {
+      const res  = await fetch(`${API_BASE_URL}/api/reports/analyze-photo`, {
         method:  'POST',
         headers: { Authorization: `Bearer ${token}` },
         body:    formData,
@@ -229,7 +230,7 @@ export default function ReportGarbage() {
         formData.append('image', compressed);
       }
 
-      const res  = await fetch('http://localhost:8000/api/reports/submit', {
+      const res  = await fetch(`${API_BASE_URL}/api/reports/submit`, {
         method:  'POST',
         headers: { Authorization: `Bearer ${token}` },
         body:    formData,
@@ -258,7 +259,7 @@ export default function ReportGarbage() {
         reportPoints:  data.reportPointsEarned  || 0,
         aiResult:      data.aiResult            || null,
         newTotalPoints: data.newTotalPoints,
-        photoUrl:      data.photoUrl ? (data.photoUrl.startsWith('http') ? data.photoUrl : `http://localhost:8000${data.photoUrl}`) : null,
+        photoUrl:      data.photoUrl ? (data.photoUrl.startsWith('http') ? data.photoUrl : `${API_BASE_URL}${data.photoUrl}`) : null,
       });
 
       if (data.pointsEarned && user) {

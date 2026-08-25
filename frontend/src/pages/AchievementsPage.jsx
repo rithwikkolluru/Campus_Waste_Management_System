@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import { useAuth } from '../contexts/AuthContext';
+import { API_BASE_URL } from '../config';
 import usePoints from '../hooks/usePoints';
 import { Award, Gift, Target, CheckCircle2, Lock } from 'lucide-react';
 import './Dashboard.css';
@@ -33,7 +34,7 @@ export default function AchievementsPage() {
 
   useEffect(() => {
     if (!token || !user?.id) return;
-    fetch('http://localhost:8000/api/leaderboard?period=all_time', {
+    fetch(`${API_BASE_URL}/api/leaderboard?period=all_time`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => (res.ok ? res.json() : null))

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Bell, Check, Users, Zap } from 'lucide-react';
 import { useNotifications } from '../contexts/NotificationContext';
 import { useNavigate } from 'react-router-dom';
+import { API_BASE_URL } from '../config';
 
 export default function NotificationBell() {
   const { unreadCount, fetchUnreadCount, notifications: ctxNotifications } = useNotifications();
@@ -11,7 +12,7 @@ export default function NotificationBell() {
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
   const token = localStorage.getItem('ecocampus_token');
-  const API_BASE = 'http://localhost:8000';
+  const API_BASE = API_BASE_URL;
 
   useEffect(() => {
     if (isOpen) loadNotifications();

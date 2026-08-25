@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import { Trophy, Medal, Award, TrendingUp, Clock, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { API_BASE_URL } from '../config';
 import './Dashboard.css';
 
 export default function LeaderboardPage() {
@@ -18,7 +19,7 @@ export default function LeaderboardPage() {
   const fetchLeaderboard = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:8000/api/leaderboard?period=${period}`, {
+      const res = await fetch(`${API_BASE_URL}/api/leaderboard?period=${period}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {

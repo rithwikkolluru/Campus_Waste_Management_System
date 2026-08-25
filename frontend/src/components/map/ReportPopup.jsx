@@ -1,4 +1,5 @@
 import { WASTE_EMOJI } from '../../utils/mapIcons';
+import { API_BASE_URL } from '../../config';
 
 const STATUS_COLORS = {
   pending:     { bg: '#fef3c7', text: '#92400e', label: '⏳ Pending' },
@@ -25,7 +26,7 @@ const timeAgo = (dateStr) => {
 const ReportPopup = ({ marker }) => {
   const status = STATUS_COLORS[marker.status] || STATUS_COLORS.pending;
   const photoUrl = marker.photo 
-    ? (marker.photo.startsWith('http') ? marker.photo : `http://localhost:8000${marker.photo}`) 
+    ? (marker.photo.startsWith('http') ? marker.photo : `${API_BASE_URL}${marker.photo}`) 
     : null;
 
   return (

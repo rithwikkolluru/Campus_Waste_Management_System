@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+import { API_BASE_URL } from '../../config';
 
 const timeAgo = (dateStr) => {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -80,7 +81,7 @@ const HistoryPanel = ({
           ) : (
             reports.map(report => {
               const photoUrl = report.photo
-                ? (report.photo.startsWith('http') ? report.photo : `http://localhost:8000${report.photo}`)
+                ? (report.photo.startsWith('http') ? report.photo : `${API_BASE_URL}${report.photo}`)
                 : null;
               return (
                 <div
