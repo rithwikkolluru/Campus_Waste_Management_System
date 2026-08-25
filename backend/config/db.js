@@ -1,13 +1,21 @@
 require('dotenv').config();
 const { Pool } = require('pg');
 
-const pool = new Pool({
-  host:     process.env.DB_HOST     || 'localhost',
-  user:     process.env.DB_USER     || 'postgres',
-  password: process.env.DB_PASSWORD || '1234567',
-  database: process.env.DB_NAME     || 'collegeDB',
-  port:     process.env.DB_PORT     || 5432,
-});
+// Support Render's DATABASE_URL (production) or individual env vars (local dev)
+const poolConfig = process.env.DATABASE_URL
+  ? {
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false },
+    }
+  : {
+      host:     process.env.DB_HOST     || 'localhost',
+      user:     process.env.DB_USER     || 'postgres',
+      password: process.env.DB_PASSWORD || '1234567',
+      database: process.env.DB_NAME     || 'collegeDB',
+      port:     process.env.DB_PORT     || 5432,
+    };
+
+const pool = new Pool(poolConfig);
 
 // Test connection on startup and confirm DB is reachable
 pool.connect((err, client, release) => {

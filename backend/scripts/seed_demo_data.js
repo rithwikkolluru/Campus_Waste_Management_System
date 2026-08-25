@@ -31,9 +31,19 @@ const ZONE_NAMES = { 1: 'Hostel Area', 2: 'Canteen', 3: 'Academic Block', 4: 'Li
 function copyPhoto(srcFile, destName) {
   const src = path.join(ASSETS_DIR, srcFile);
   const dest = path.join(UPLOAD_DIR, destName);
-  if (!fs.existsSync(src)) throw new Error(`Image not found: ${src}`);
   if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-  fs.copyFileSync(src, dest);
+  
+  if (fs.existsSync(src)) {
+    fs.copyFileSync(src, dest);
+  } else {
+    // Fallback to local test.png or a placeholder
+    const localTestPng = path.join(__dirname, '..', 'test.png');
+    if (fs.existsSync(localTestPng)) {
+      fs.copyFileSync(localTestPng, dest);
+    } else {
+      fs.writeFileSync(dest, 'dummy image data');
+    }
+  }
   return { dest, url: `/uploads/waste-photos/${destName}` };
 }
 
@@ -51,9 +61,12 @@ async function seed() {
   try {
     await client.query('BEGIN');
 
-    const studentRes = await client.query(`SELECT id FROM users WHERE email = 'noking773@gmail.com'`);
+    let studentRes = await client.query(`SELECT id FROM users WHERE email = 'student@campus.edu'`);
     if (!studentRes.rows.length) {
-      throw new Error('Student noking773@gmail.com not found. Please register/login first.');
+      const insStudent = await client.query(
+        `INSERT INTO users (name, email, role, total_points) VALUES ('Student Demo', 'student@campus.edu', 'student', 100) RETURNING id`
+      );
+      studentRes = insStudent;
     }
     const studentId = studentRes.rows[0].id;
     const coordinatorId = await ensureCoordinator(client);

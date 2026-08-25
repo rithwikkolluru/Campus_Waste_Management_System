@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "type": "commonjs",
   "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "init-db": "node scripts/init_db.js && node scripts/seed_demo_data.js"
+  },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "bcryptjs": "^3.0.3",
