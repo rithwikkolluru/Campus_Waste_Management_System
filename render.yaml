@@ -6,7 +6,7 @@ services:
     region: oregon
     rootDir: backend
     buildCommand: npm install
-    startCommand: node server.js
+    startCommand: npm run init-db && node server.js
     envVars:
       - key: NODE_ENV
         value: production
