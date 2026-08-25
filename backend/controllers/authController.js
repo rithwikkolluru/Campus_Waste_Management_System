@@ -176,20 +176,66 @@ exports.login = async (req, res) => {
   }
 
   try {
-    // Demo accounts — check first to avoid a DB round-trip on every demo login
+    // Demo accounts definitions
     const DEMO_ACCOUNTS = {
-      'admin@campus.edu':       { id: 999, name: 'Admin Demo',       role: 'admin',       email: 'admin@campus.edu' },
-      'coordinator@campus.edu': { id: 998, name: 'Coordinator Demo', role: 'coordinator', email: 'coordinator@campus.edu' },
+      'admin@campus.edu':       { name: 'Admin Demo',       role: 'admin',       assigned_zone: null },
+      'coordinator@campus.edu': { name: 'Coordinator Demo', role: 'coordinator', assigned_zone: 1 },
+      'student@campus.edu':     { name: 'Student Demo',     role: 'student',     assigned_zone: null },
     };
 
     if (password === 'demo1234' && DEMO_ACCOUNTS[email]) {
-      const demoUser = DEMO_ACCOUNTS[email];
+      const demoData = DEMO_ACCOUNTS[email];
+      
+      // Upsert the demo user into the database
+      let userRes = await db.query('SELECT * FROM users WHERE email = $1', [email]);
+      let dbUser;
+      
+      if (userRes.rows.length === 0) {
+        const insertRes = await db.query(
+          `INSERT INTO users (name, email, role, total_points, assigned_zone) 
+           VALUES ($1, $2, $3, 100, $4) 
+           RETURNING id, name, email, role, total_points, assigned_zone`,
+          [demoData.name, email, demoData.role, demoData.assigned_zone]
+        );
+        dbUser = insertRes.rows[0];
+        console.log(`[DEMO] Created user ${email} with id ${dbUser.id} in DB.`);
+      } else {
+        dbUser = userRes.rows[0];
+        // Ensure role and assigned_zone are correct in case database seeds differ
+        if (dbUser.role !== demoData.role || (demoData.assigned_zone && !dbUser.assigned_zone)) {
+          const updateRes = await db.query(
+            'UPDATE users SET role = $1, assigned_zone = COALESCE(assigned_zone, $2) WHERE id = $3 RETURNING *',
+            [demoData.role, demoData.assigned_zone, dbUser.id]
+          );
+          dbUser = updateRes.rows[0];
+        }
+      }
+
       const token = jwt.sign(
-        { id: demoUser.id, email: demoUser.email, role: demoUser.role },
+        { 
+          id: dbUser.id, 
+          userId: dbUser.id, 
+          email: dbUser.email, 
+          role: dbUser.role,
+          assigned_zone: dbUser.assigned_zone 
+        },
         JWT_SECRET,
         { expiresIn: '24h' }
       );
-      return res.json({ status: 'success', token, user: demoUser });
+      
+      return res.json({
+        status: 'success',
+        token,
+        user: {
+          id: dbUser.id,
+          name: dbUser.name,
+          email: dbUser.email,
+          role: dbUser.role,
+          phone: dbUser.phone,
+          total_points: dbUser.total_points,
+          zone: dbUser.assigned_zone ? `Zone ${dbUser.assigned_zone}` : null
+        }
+      });
     }
 
     // Real DB lookup for non-demo staff
@@ -216,7 +262,7 @@ exports.login = async (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
+      { id: user.id, userId: user.id, email: user.email, role: user.role, assigned_zone: user.assigned_zone },
       JWT_SECRET,
       { expiresIn: '24h' }
     );
@@ -224,7 +270,15 @@ exports.login = async (req, res) => {
     res.json({
       status: 'success',
       token,
-      user: { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone },
+      user: { 
+        id: user.id, 
+        name: user.name, 
+        email: user.email, 
+        role: user.role, 
+        phone: user.phone,
+        total_points: user.total_points,
+        zone: user.assigned_zone ? `Zone ${user.assigned_zone}` : null
+      },
     });
   } catch (err) {
     console.error('Error during email login:', err);
