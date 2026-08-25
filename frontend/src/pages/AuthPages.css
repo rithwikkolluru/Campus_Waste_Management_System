@@ -330,3 +330,76 @@
   .auth-form-header h2 { font-size: 1.2rem; }
   .auth-submit { padding: 11px 16px; }
 }
+
+/* ============================================================
+   Quick-Access Role Cards Styles
+   ============================================================ */
+.role-card-item {
+  position: relative;
+  background: rgba(30, 41, 59, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+}
+
+.role-card-item:hover {
+  transform: translateY(-6px);
+  background: rgba(30, 41, 59, 0.65);
+}
+
+.role-card-item:hover .arrow-icon {
+  transform: translateX(4px);
+}
+
+/* Student card styling */
+.role-student-card:hover {
+  border-color: rgba(52, 211, 153, 0.4);
+  box-shadow: 0 12px 30px rgba(52, 211, 153, 0.15);
+}
+.role-student-card:hover .role-icon-container {
+  background: rgba(52, 211, 153, 0.1);
+  border-color: rgba(52, 211, 153, 0.3);
+}
+
+/* Coordinator card styling */
+.role-coordinator-card:hover {
+  border-color: rgba(96, 165, 250, 0.4);
+  box-shadow: 0 12px 30px rgba(96, 165, 250, 0.15);
+}
+.role-coordinator-card:hover .role-icon-container {
+  background: rgba(96, 165, 250, 0.1);
+  border-color: rgba(96, 165, 250, 0.3);
+}
+
+/* Admin card styling */
+.role-admin-card:hover {
+  border-color: rgba(167, 139, 250, 0.4);
+  box-shadow: 0 12px 30px rgba(167, 139, 250, 0.15);
+}
+.role-admin-card:hover .role-icon-container {
+  background: rgba(167, 139, 250, 0.1);
+  border-color: rgba(167, 139, 250, 0.3);
+}
+
+/* Loading & disabled states */
+.role-card-item.active-loading {
+  transform: scale(0.98);
+  opacity: 0.95;
+}
+.role-student-card.active-loading {
+  border-color: #34d399;
+}
+.role-coordinator-card.active-loading {
+  border-color: #60a5fa;
+}
+.role-admin-card.active-loading {
+  border-color: #a78bfa;
+}
+
+.role-card-item.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+  transform: scale(0.97);
+}
+
