@@ -1,0 +1,66 @@
+services:
+  # ─── Backend API (Node.js Web Service) ───
+  - type: web
+    name: ecocampus-backend
+    runtime: node
+    region: oregon
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "8000"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DB_HOST
+        fromDatabase:
+          name: ecocampus-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: ecocampus-db
+          property: port
+      - key: DB_USER
+        fromDatabase:
+          name: ecocampus-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: ecocampus-db
+          property: password
+      - key: DB_NAME
+        fromDatabase:
+          name: ecocampus-db
+          property: database
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ecocampus-db
+          property: connectionString
+
+  # ─── Frontend (Static Site) ───
+  - type: web
+    name: ecocampus-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: no-cache
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        value: https://ecocampus-backend.onrender.com/api
+
+# ─── PostgreSQL Database ───
+databases:
+  - name: ecocampus-db
+    plan: free
+    databaseName: collegedb
+    user: ecocampus_user
