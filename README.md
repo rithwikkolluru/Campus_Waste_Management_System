@@ -913,13 +913,12 @@ npm run dev
 
 Open `http://localhost:5173`
 
-**Student:** Click "Sign in with Google" → use any Gmail account
+The login screen has been updated to a **Quick-Access Role Portal**:
+- **Student**: Click the "Student Portal" card to enter the student dashboard immediately.
+- **Zone Coordinator**: Click the "Zone Coordinator" card to enter the coordinator dashboard immediately.
+- **Admin**: Click the "Administrator" card to enter the admin dashboard immediately.
 
-**Admin:** Click "Staff Access" tab → use credentials:
-```
-Email:    admin@campus.edu
-Password: demo1234
-```
+The system automatically handles demo session configuration, database registration, and redirects.
 
 ---
 
