@@ -56,7 +56,10 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_URL
-        value: https://ecocampus-backend.onrender.com/api
+        fromService:
+          type: web
+          name: ecocampus-backend
+          envVarKey: RENDER_EXTERNAL_URL
 
 # ─── PostgreSQL Database ───
 databases:
