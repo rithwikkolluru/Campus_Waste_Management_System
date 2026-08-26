@@ -3,10 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
-import { Upload, MapPin, X, Camera, FileText, Send, ArrowLeft, Star, Sparkles, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Upload, MapPin, X, Camera, FileText, Send, ArrowLeft, Star, Sparkles, AlertTriangle, CheckCircle, Image as ImageIcon } from 'lucide-react';
 import { validateImageFile, validateReportForm } from '../utils/validation';
 import usePoints from '../hooks/usePoints';
 import { API_BASE_URL } from '../config';
+import { analyzeImageLocal, loadYoloModel } from '../utils/yoloClassifier';
 import './Dashboard.css';
 import CameraCapture from '../components/CameraCapture';
 import LocationVerifier from '../components/LocationVerifier';
@@ -92,6 +93,11 @@ export default function ReportGarbage() {
   const [zoneAnnouncements, setZoneAnnouncements] = useState([]);
 
   useEffect(() => {
+    // Preload YOLO model for fallback
+    loadYoloModel().catch(console.error);
+  }, []);
+
+  useEffect(() => {
     if (!zone) {
       setZoneAnnouncements([]);
       return;
@@ -165,8 +171,7 @@ export default function ReportGarbage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setAiSuggestion({ aiAvailable: false, reason: data.message || data.error || 'Analysis request failed' });
-        return;
+        throw new Error(data.message || data.error || 'Analysis request failed');
       }
       if (data.success && data.aiResult?.aiAvailable) {
         setAiSuggestion(data.aiResult);
@@ -177,13 +182,24 @@ export default function ReportGarbage() {
           if (matched) setWasteType(matched);
         }
       } else {
-        setAiSuggestion({
-          aiAvailable: false,
-          reason: data.aiResult?.reason || 'AI quota busy — select waste type manually',
-        });
+        throw new Error(data.aiResult?.reason || 'AI quota busy');
       }
     } catch (err) {
-      setAiSuggestion({ aiAvailable: false, reason: 'Could not reach AI service — select waste type manually' });
+      console.log('Cloud AI failed or busy, falling back to local YOLO model...', err);
+      try {
+        const img = new Image();
+        img.src = URL.createObjectURL(file);
+        await new Promise((resolve) => { img.onload = resolve; });
+        const localResult = await analyzeImageLocal(img);
+        setAiSuggestion(localResult);
+        if (!wasteType || !userOverride) {
+          const matched = WASTE_TYPES.find(w => w.toLowerCase() === (localResult.wasteType || '').toLowerCase());
+          if (matched) setWasteType(matched);
+        }
+      } catch (yoloErr) {
+        console.error('Local YOLO failed:', yoloErr);
+        setAiSuggestion({ aiAvailable: false, reason: 'Cloud AI busy & local model failed — select waste type manually' });
+      }
     } finally {
       setAiAnalyzing(false);
     }
