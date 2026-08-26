@@ -1560,3 +1560,33 @@
   .announcement-header h4 { font-size: 0.85rem; }
   .location-card { padding: 10px 12px; }
 }
+
+
+/* RESPONSIVE STYLES */
+@media (max-width: 1024px) {
+  .coordinator-header-banner, .admin-header-banner { padding: 24px 20px; }
+  .coordinator-header-banner h1, .admin-header-banner h1 { font-size: 1.3rem; }
+  .tab-bar { overflow-x: auto; width: 100%; flex-wrap: nowrap; }
+  .notification-dropdown { width: 300px; }
+}
+@media (max-width: 768px) {
+  .report-form-card { padding: 24px 16px; max-width: 100%; }
+  .coordinator-header-banner, .admin-header-banner { padding: 20px 16px; }
+  .coordinator-header-banner h1, .admin-header-banner h1 { font-size: 1.15rem; }
+  .tab-bar { width: 100%; overflow-x: auto; }
+  .tab-btn { padding: 8px 14px; font-size: 0.8rem; white-space: nowrap; }
+  .zone-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .notification-dropdown { width: calc(100vw - 32px); right: -60px; }
+  .success-card { padding: 32px 20px; }
+}
+@media (max-width: 480px) {
+  .report-form-card { padding: 16px 12px; }
+  .form-section { margin-bottom: 20px; padding-bottom: 20px; }
+  .coordinator-header-banner, .admin-header-banner { padding: 16px 12px; }
+  .tab-bar { padding: 4px; }
+  .tab-btn { padding: 6px 12px; font-size: 0.75rem; }
+  .zone-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+  .search-input { width: 100% !important; }
+  .notification-dropdown { width: calc(100vw - 24px); right: -80px; max-height: 350px; }
+  .map-toolbar { flex-direction: column; align-items: stretch; }
+}

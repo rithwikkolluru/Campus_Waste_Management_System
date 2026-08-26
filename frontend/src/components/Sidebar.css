@@ -279,3 +279,13 @@
   .sidebar-overlay { display: block; }
   .desktop-only { display: none; }
 }
+
+
+/* RESPONSIVE STYLES */
+@media (max-width: 1024px) {
+  .sidebar { width: 72px; }
+  .sidebar-brand-text, .sidebar-user-info, .sidebar-section-label, .sidebar-nav-item span, .sidebar-zone-badge, .sidebar-notif-pill { display: none; }
+  .sidebar-user { justify-content: center; padding: 8px; }
+  .sidebar-brand { justify-content: center; padding: 8px 8px 16px; }
+  .collapse-btn.desktop-only { display: none; }
+}
