@@ -43,10 +43,10 @@ const LocationVerifier = ({ onLocationVerified, onLocationFailed }) => {
       <div className="location-card error">
         <span className="location-icon">❌</span>
         <div>
-          <p className="location-title">Outside Campus Boundary</p>
+          <p className="location-title">Outside State Service Boundary</p>
           <p className="location-subtitle">
-            You are {location.distanceFromCampus}m from JNTUH campus.
-            Please come to campus to report waste.
+            You are {location.distanceFromCampus}m from the active municipal zone.
+            Please ensure you are within the monitored service area to report waste.
           </p>
           <button type="button" onClick={getLocation} className="btn-retry-location">
             🔄 Check Again

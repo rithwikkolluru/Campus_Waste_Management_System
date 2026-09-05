@@ -305,11 +305,11 @@ export default function StudentDashboard() {
           </div>
         </div>
 
-        {/* Campus Announcements from coordinators */}
+        {/* Municipal & Ward Announcements from coordinators */}
         {campusAnnouncements.length > 0 && (
           <div className="glass-card mb-6" style={{ padding: '24px' }}>
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">📢 Campus Announcements</h3>
+              <h3 className="text-lg font-semibold">📢 Municipal & Ward Announcements</h3>
               <span className="badge badge-blue">{campusAnnouncements.length} Active</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>

@@ -276,7 +276,7 @@ const CampusMapPage = () => {
             {loading && (
               <div className="map-loading-overlay">
                 <div className="map-spinner" />
-                <p>Loading campus map...</p>
+                <p>Loading civic GIS map...</p>
               </div>
             )}
           </div>
@@ -284,7 +284,7 @@ const CampusMapPage = () => {
           {/* Report count footer */}
           <div className="map-footer">
             {mapMode === 'pins'
-              ? `Showing ${filteredMarkers.length} reports on JNTUH Campus`
+              ? `Showing ${filteredMarkers.length} localized civic reports`
               : mapMode === 'districts'
               ? `Statewide GIS: Monitoring ${DISTRICT_CENTERS.length} Telangana District Hubs`
               : `Heatmap showing ${heatPoints.length} report locations`

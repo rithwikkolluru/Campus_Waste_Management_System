@@ -734,7 +734,7 @@ export default function AdminDashboard() {
             <div className="flex justify-between items-center mb-4">
               <div>
                 <h3 className="text-lg font-semibold flex items-center gap-2">
-                  <Sparkles size={18} color="#a78bfa" /> AI Weekly Campus Analysis
+                  <Sparkles size={18} color="#a78bfa" /> AI Weekly Statewide Cleanliness Analysis
                 </h3>
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', marginTop: '4px' }}>
                   Powered by Google Gemini · Auto-generated every Monday 8am

@@ -332,8 +332,8 @@ export default function ReportGarbage() {
             <ArrowLeft size={16} /> Back
           </button>
           <div>
-            <h1>📸 Upload Photo &amp; Report</h1>
-            <p>Upload a garbage photo to clean campus and earn <strong className="text-accent">+15 points</strong></p>
+            <h1>📸 Report Garbage</h1>
+            <p>Upload a garbage photo to improve civic cleanliness and earn <strong className="text-accent">+15 points</strong></p>
           </div>
         </div>
 
@@ -718,7 +718,7 @@ export default function ReportGarbage() {
                 <>
                   <div className="success-icon">🎉</div>
                   <h2>Report Submitted!</h2>
-                  <p>Great job! Your contribution helps keep the campus clean.</p>
+                  <p>Great job! Your contribution helps keep our state and municipal wards clean.</p>
 
                   {reportResult.photoUrl && (
                     <div style={{ margin: '16px 0', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--glass-border)' }}>

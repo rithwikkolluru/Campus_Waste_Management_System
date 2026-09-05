@@ -57,13 +57,13 @@ export default function RegisterPage() {
           <div className="auth-brand">
             <div className="auth-logo"><Recycle size={32} /></div>
             <div className="auth-brand-text">
-              <span className="auth-brand-name">CleanGuard Campus</span>
-              <span className="auth-brand-sub jntuh-glow">JNTUHUCESTH</span>
+              <span className="auth-brand-name">CleanState AI</span>
+              <span className="auth-brand-sub jntuh-glow">Telangana Urban Platform</span>
             </div>
           </div>
           <div className="auth-hero-text">
-            <h1>Join the<br /><span className="gradient-text">Green Movement.</span></h1>
-            <p>Create your account and start contributing to a cleaner, smarter campus today.</p>
+            <h1>Join the<br /><span className="gradient-text">Clean State Movement.</span></h1>
+            <p>Create your civic account and start contributing to cleaner, smarter municipal districts today.</p>
           </div>
           <div className="auth-features">
             {[
@@ -116,21 +116,21 @@ export default function RegisterPage() {
                   </div>
                 </div>
                 <div className="input-group">
-                  <label className="input-label">Role</label>
+                  <label className="input-label">Civic Role</label>
                   <div className="input-icon-wrap">
                     <BookOpen size={16} className="input-icon" />
                     <select id="reg-role" className="input-field input-with-icon gender-select" value={form.role} onChange={set('role')}>
-                      <option value="student">Student</option>
-                      <option value="coordinator">Zone Coordinator</option>
+                      <option value="student">Civic Citizen</option>
+                      <option value="coordinator">Ward Inspector</option>
                     </select>
                   </div>
                 </div>
               </div>
 
               <div className="input-group">
-                <label className="input-label">Campus Zone</label>
+                <label className="input-label">Municipal Ward / Zone</label>
                 <select id="reg-zone" className="input-field gender-select" value={form.zone} onChange={set('zone')}>
-                  <option value="">Select your zone...</option>
+                  <option value="">Select your municipal ward...</option>
                   {ZONES.map(z => <option key={z} value={z}>{z}</option>)}
                 </select>
                 {errors.zone && <span style={{ color: '#f87171', fontSize: '0.75rem' }}>{errors.zone}</span>}

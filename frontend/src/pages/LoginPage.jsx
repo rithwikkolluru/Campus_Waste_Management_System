@@ -47,24 +47,24 @@ export default function LoginPage() {
   const rolesConfig = [
     {
       id: 'student',
-      title: 'Student Portal',
-      description: 'Report garbage issues, earn points, track achievements, and view leaderboard rankings.',
+      title: 'Civic Citizen Portal',
+      description: 'Report civic waste issues, earn municipal tax rebates, track achievements, and view district rankings.',
       icon: GraduationCap,
       colorClass: 'role-student-card',
       glowColor: '#34d399',
     },
     {
       id: 'coordinator',
-      title: 'Zone Coordinator',
-      description: 'Verify reports, manage dustbins, assign workers, and monitor specific campus zones.',
+      title: 'Ward Inspector & Fleet',
+      description: 'Verify cleanliness proofs, dispatch sanitation workers, track bin capacities, and enforce ward SLAs.',
       icon: UserCheck,
       colorClass: 'role-coordinator-card',
       glowColor: '#60a5fa',
     },
     {
       id: 'admin',
-      title: 'Administrator',
-      description: 'Oversee entire campus, manage system alerts, add notifications, and control all users.',
+      title: 'Urban Directorate Admin',
+      description: 'Oversee statewide municipal compliance, inter-district Swachh benchmarks, GIS heatmaps, and executive directives.',
       icon: Shield,
       colorClass: 'role-admin-card',
       glowColor: '#a78bfa',
@@ -84,14 +84,14 @@ export default function LoginPage() {
           <div className="auth-brand" style={{ justifyContent: 'center', marginBottom: '16px' }}>
             <div className="auth-logo"><Recycle size={32} /></div>
             <div className="auth-brand-text">
-              <span className="auth-brand-name">CleanGuard Campus</span>
+              <span className="auth-brand-name">CleanState AI</span>
             </div>
           </div>
           <h1 style={{ fontFamily: 'Space Grotesk, sans-serif', fontSize: '2.5rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-            System <span className="gradient-text">Quick Access Portal</span>
+            Telangana <span className="gradient-text">Civic Access Portal</span>
           </h1>
           <p style={{ color: 'var(--text-secondary)', marginTop: '8px', fontSize: '1rem', maxWidth: '600px', margin: '8px auto 0' }}>
-            Select your desired role to log in instantly. The system will automatically configure a demo session and redirect you to the appropriate dashboard.
+            Select your civic role to log in instantly. Experience the state-level municipal waste management and intelligence platform.
           </p>
         </div>
 

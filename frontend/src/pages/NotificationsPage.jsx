@@ -56,7 +56,7 @@ export default function NotificationsPage() {
         <div className="page-header flex justify-between items-center">
           <div>
             <h1>🔔 Notification Center</h1>
-            <p>Stay updated on your campus garbage reports and system alerts</p>
+            <p>Stay updated on your civic cleanliness reports, ward resolutions, and municipal alerts</p>
           </div>
           <div className="flex gap-3">
             <div className="tab-bar" style={{ marginBottom: 0 }}>
