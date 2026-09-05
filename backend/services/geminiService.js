@@ -73,16 +73,16 @@ const classifyWaste = async (imagePath) => {
     const imageData = imageToBase64(imagePath);
     const mimeType = getMimeType(imagePath);
 
-    const prompt = `Analyze this waste/garbage image and respond in this exact JSON format only, no other text:
+    const prompt = `Analyze this civic waste/garbage image and respond in this exact JSON format only, no other text:
 {
-  "wasteType": "one of: Plastic, Organic, E-waste, Paper, Metal, Glass, Hazardous, Mixed, General Waste",
+  "wasteType": "one of: Plastic, Organic, E-Waste, Paper, Metal, Glass, Hazardous, Construction & Demolition, Mixed, General Waste",
   "binColor": "one of: Blue, Green, Red, Yellow, Black",
-  "binLabel": "one of: Recyclable, Biodegradable, E-waste, Hazardous, Landfill",
+  "binLabel": "one of: Dry Recyclable, Wet Biodegradable, Hazardous, E-Waste, Landfill",
   "confidence": number between 0 and 100,
-  "tips": "one short sentence disposal tip",
+  "tips": "one short sentence disposal tip according to Municipal Solid Waste guidelines",
   "isWaste": true or false
 }
-IMPORTANT: If the image is a selfie, screenshot, stock photo, or anything that is NOT clearly discarded garbage, you MUST set isWaste to false to prevent fraud.`;
+IMPORTANT: If the image is a selfie, screenshot, person, pet, stock photo, or anything that is NOT clearly discarded waste/garbage on public/private premises, you MUST set isWaste to false to prevent civic reward fraud.`;
 
     const text = await generateWithFallback(genAI, [
       prompt,

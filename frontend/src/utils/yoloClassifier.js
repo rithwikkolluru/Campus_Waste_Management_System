@@ -11,13 +11,28 @@ export const loadYoloModel = async () => {
   return model;
 };
 
+// Municipal Solid Waste (MSW) classification mappings for Smart Cities
 const classToWasteType = {
+  // Dry Recyclable - Plastics & Packaging
   'bottle': 'Plastic',
   'cup': 'Plastic',
   'fork': 'Plastic',
+  'bowl': 'Plastic',
+  'backpack': 'Dry Waste',
+  'handbag': 'Dry Waste',
+  'suitcase': 'Dry Waste',
+  
+  // Dry Recyclable - Metal
   'knife': 'Metal',
   'spoon': 'Metal',
-  'bowl': 'Plastic',
+  'scissors': 'Metal',
+  'chair': 'Metal',
+
+  // Dry Recyclable - Paper & Cellulose
+  'book': 'Paper',
+  'paper': 'Paper',
+
+  // Wet & Organic / Biodegradable Waste
   'banana': 'Organic',
   'apple': 'Organic',
   'sandwich': 'Organic',
@@ -28,6 +43,9 @@ const classToWasteType = {
   'pizza': 'Organic',
   'donut': 'Organic',
   'cake': 'Organic',
+  'potted plant': 'Organic',
+
+  // E-Waste & Electronics
   'tv': 'E-Waste',
   'laptop': 'E-Waste',
   'mouse': 'E-Waste',
@@ -38,8 +56,13 @@ const classToWasteType = {
   'oven': 'E-Waste',
   'toaster': 'E-Waste',
   'refrigerator': 'E-Waste',
-  'book': 'Paper',
-  'paper': 'Paper'
+  'clock': 'E-Waste',
+
+  // Construction & Demolition / Bulky Waste
+  'bed': 'Construction & Demolition',
+  'toilet': 'Construction & Demolition',
+  'couch': 'Construction & Demolition',
+  'bench': 'Construction & Demolition',
 };
 
 export const analyzeImageLocal = async (imageElement) => {
@@ -47,10 +70,16 @@ export const analyzeImageLocal = async (imageElement) => {
   const predictions = await net.detect(imageElement);
   
   if (predictions.length === 0) {
-    return { aiAvailable: true, wasteType: 'Mixed', confidence: 0.5, tips: 'Could not clearly detect objects. Classified as Mixed.' };
+    return {
+      aiAvailable: true,
+      wasteType: 'Mixed',
+      confidence: 50,
+      binColor: 'Black',
+      binLabel: 'Landfill / Mixed',
+      tips: 'Could not clearly isolate individual items. Classified as Mixed Municipal Waste.'
+    };
   }
 
-  // Get the most confident prediction that maps to a waste type
   let bestMatch = null;
   let highestConf = 0;
 
@@ -63,18 +92,33 @@ export const analyzeImageLocal = async (imageElement) => {
   }
 
   if (bestMatch) {
+    let binColor = 'Blue';
+    let binLabel = 'Dry Recyclables';
+    if (bestMatch.type === 'Organic') {
+      binColor = 'Green';
+      binLabel = 'Wet / Compostable';
+    } else if (bestMatch.type === 'E-Waste' || bestMatch.type === 'Hazardous') {
+      binColor = 'Red';
+      binLabel = 'Hazardous / E-Waste';
+    }
+
     return {
       aiAvailable: true,
       wasteType: bestMatch.type,
-      confidence: highestConf,
-      tips: `Locally detected a ${bestMatch.original}. Classified as ${bestMatch.type}.`
+      confidence: Math.round(highestConf * 100),
+      binColor,
+      binLabel,
+      tips: `AI Object Detection identified ${bestMatch.original}. Recommended disposal in ${binColor} Bin (${binLabel}).`
     };
   } else {
     return {
       aiAvailable: true,
       wasteType: 'General Waste',
-      confidence: predictions[0].score,
-      tips: `Detected ${predictions[0].class} which doesn't have a specific recycling category. Marked as General Waste.`
+      confidence: Math.round(predictions[0].score * 100),
+      binColor: 'Blue',
+      binLabel: 'Municipal Waste',
+      tips: `Detected ${predictions[0].class}. Dispose in Municipal Collection Bin.`
     };
   }
 };
+
