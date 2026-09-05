@@ -246,8 +246,8 @@ export default function AdminDashboard() {
       <Sidebar />
       <main className="main-content">
         <div className="admin-header-banner">
-          <h1>🌿 Administration Panel</h1>
-          <p>Smart Campus Garbage Monitoring System – Full System Control</p>
+          <h1>🏛️ CleanState AI – State Urban Directorate</h1>
+          <p>Statewide Civic Cleanliness & Municipal Waste Intelligence Command Center</p>
         </div>
 
         {/* Tabs */}

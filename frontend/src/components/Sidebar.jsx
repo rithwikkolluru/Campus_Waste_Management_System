@@ -37,7 +37,7 @@ const NAV_ITEMS = {
 };
 
 const ROLE_COLORS = { student: '#34d399', coordinator: '#60a5fa', admin: '#a78bfa' };
-const ROLE_LABELS = { student: 'Student', coordinator: 'Zone Coordinator', admin: 'Administrator' };
+const ROLE_LABELS = { student: 'Civic Citizen', coordinator: 'Ward Inspector', admin: 'Urban Directorate' };
 
 export default function Sidebar() {
   const { user, logout }     = useAuth();
@@ -113,7 +113,7 @@ export default function Sidebar() {
           </div>
           {!collapsed && (
             <div className="sidebar-brand-text">
-              <span className="sidebar-brand-name">CleanGuard Campus</span>
+              <span className="sidebar-brand-name">CleanState AI</span>
             </div>
           )}
           {/* Desktop collapse toggle */}
