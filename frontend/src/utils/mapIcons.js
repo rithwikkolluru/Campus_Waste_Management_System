@@ -72,4 +72,36 @@ const getMarkerIcon = (marker) =>
     WASTE_EMOJI[marker.wasteType] || '🗑️'
   );
 
-export { createPinIcon, createUserIcon, getMarkerIcon, WASTE_EMOJI };
+const createDistrictClusterIcon = (district) => {
+  const isCritical = district.critical > 0;
+  return L.divIcon({
+    html: `
+      <div style="
+        background: ${isCritical ? 'rgba(239, 68, 68, 0.9)' : 'rgba(16, 185, 129, 0.9)'};
+        color: white;
+        border: 2px solid white;
+        border-radius: 50%;
+        width: 44px;
+        height: 44px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-family: sans-serif;
+        font-weight: bold;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+        cursor: pointer;
+        transition: transform 0.2s;
+      ">
+        <span style="font-size: 11px;">${district.total}</span>
+        <span style="font-size: 8px; opacity: 0.9;">${district.name.slice(0, 3).toUpperCase()}</span>
+      </div>
+    `,
+    className: '',
+    iconSize: [44, 44],
+    iconAnchor: [22, 22],
+  });
+};
+
+export { createPinIcon, createUserIcon, getMarkerIcon, createDistrictClusterIcon, WASTE_EMOJI };
+
