@@ -8,6 +8,7 @@ import { validateImageFile, validateReportForm } from '../utils/validation';
 import usePoints from '../hooks/usePoints';
 import { API_BASE_URL } from '../config';
 import { analyzeImageLocal, loadYoloModel } from '../utils/yoloClassifier';
+import { reverseGeocode } from '../utils/geoCoder';
 import './Dashboard.css';
 import CameraCapture from '../components/CameraCapture';
 import LocationVerifier from '../components/LocationVerifier';
@@ -85,9 +86,10 @@ export default function ReportGarbage() {
   const [aiSuggestion, setAiSuggestion] = useState(null);   // result of analyze-photo
   const [userOverride, setUserOverride] = useState(false);  // true if user manually changed type
 
-  // Location/GPS states
+  // Location/GPS & State Hierarchy states
   const [locationVerified, setLocationVerified] = useState(false);
   const [coords, setCoords] = useState({ lat: null, lng: null, accuracy: null });
+  const [geoDetails, setGeoDetails] = useState(null);
   const [locationError, setLocationError] = useState(null);
   const [zoneStatus, setZoneStatus] = useState(null);
   const [zoneAnnouncements, setZoneAnnouncements] = useState([]);
@@ -122,6 +124,17 @@ export default function ReportGarbage() {
     setLocationVerified(true);
     setCoords({ lat, lng, accuracy });
     setLocationError(null);
+
+    // Resolve State, District, Municipality & Ward via OpenStreetMap Reverse Geocoding
+    try {
+      const geo = await reverseGeocode(lat, lng);
+      setGeoDetails(geo);
+      if (!zone) {
+        setZone(geo.ward || geo.district || 'Hostel Area');
+      }
+    } catch (err) {
+      console.warn('Geocoding notice:', err);
+    }
 
     // Fetch zone status
     try {
@@ -230,17 +243,24 @@ export default function ReportGarbage() {
 
     try {
       const formData = new FormData();
-      const zoneId = ZONES.find(z => z.name === zone)?.id;
-      if (!zoneId) throw new Error('Please select a valid campus zone.');
+      const zoneId = ZONES.find(z => z.name === zone)?.id || 1;
       formData.append('zone_id', zoneId);
       formData.append('description', description);
       formData.append('waste_type',  wasteType);
       formData.append('priority',    priority.toLowerCase());
       formData.append('user_id',     user?.id || 1);
-      formData.append('location',    zone);
+      formData.append('location',    zone || geoDetails?.formattedAddress || 'Campus');
       formData.append('latitude',     coords.lat);
       formData.append('longitude',    coords.lng);
       formData.append('gps_accuracy', coords.accuracy !== null ? coords.accuracy : '');
+      if (geoDetails) {
+        formData.append('state', geoDetails.state || 'Telangana');
+        formData.append('district', geoDetails.district || 'Hyderabad');
+        formData.append('city_municipality', geoDetails.city || 'Greater Hyderabad Municipal Corporation');
+        formData.append('ward_number', geoDetails.ward || 'Ward 1');
+        formData.append('pincode', geoDetails.pincode || '500085');
+        formData.append('formatted_address', geoDetails.formattedAddress || '');
+      }
       if (fileObj) {
         const compressed = await compressImage(fileObj);
         formData.append('image', compressed);
@@ -337,6 +357,27 @@ export default function ReportGarbage() {
               onLocationVerified={handleLocationVerified}
               onLocationFailed={handleLocationFailed}
             />
+
+            {geoDetails && (
+              <div style={{
+                margin: '10px 0 16px',
+                padding: '10px 14px',
+                background: 'rgba(16, 185, 129, 0.08)',
+                border: '1px solid rgba(16, 185, 129, 0.25)',
+                borderRadius: '10px',
+                fontSize: '0.82rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                color: 'var(--text-secondary)'
+              }}>
+                <MapPin size={16} color="var(--accent-green)" />
+                <div>
+                  <strong style={{ color: 'var(--text-primary)' }}>{geoDetails.district}, {geoDetails.state}</strong>
+                  <span style={{ marginLeft: '6px', color: 'var(--text-muted)' }}>({geoDetails.city} • {geoDetails.ward})</span>
+                </div>
+              </div>
+            )}
 
             <ZoneWarning zoneStatus={zoneStatus} />
 
