@@ -126,12 +126,12 @@ export default function StudentDashboard() {
       <Sidebar />
       <main className="main-content">
         {/* Header */}
-        <div className="page-header flex justify-between items-center">
+        <div className="page-header page-header-mobile">
           <div>
             <h1>👋 Hello, {user?.name?.split(' ')[0] || 'Student'}!</h1>
             <p>Upload garbage photos to earn points and keep campus clean.</p>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="page-header-actions">
             <NotificationBell />
             <button className="btn btn-primary" onClick={() => navigate('/report')} id="quick-report-btn">
               <Plus size={18} /> Upload Photo (+5 pts)
