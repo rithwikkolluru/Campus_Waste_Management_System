@@ -533,11 +533,19 @@ export default function CoordinatorDashboard() {
         <div className="coordinator-header-banner">
           <div className="coordinator-banner-content">
             <div>
-              <h1>🛡️ CleanGuard Campus Command Center</h1>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                <span className="badge badge-primary" style={{ fontSize: '0.72rem', padding: '3px 10px' }}>
+                  📍 {user?.district || 'Hyderabad'} District
+                </span>
+                <span className="badge" style={{ background: 'rgba(59,130,246,0.15)', color: '#60a5fa', fontSize: '0.72rem', padding: '3px 10px' }}>
+                  🛡️ Ward Sanitary Inspector
+                </span>
+              </div>
+              <h1>🏛️ Municipal Ward Cleanliness &amp; Fleet Command Center</h1>
               <p>
-                Welcome, <strong>{user?.name}</strong>. Zone assigned: 
+                Sanitary Inspector: <strong>{user?.name}</strong> • Jurisdiction: 
                 <span style={{ color: '#60a5fa', fontWeight: 'bold', marginLeft: '6px' }}>
-                  {zones.find(z => z.id === user?.assigned_zone)?.name || 'All Zones'}
+                  {user?.assigned_ward || zones.find(z => z.id === user?.assigned_zone)?.name || 'All Municipal Wards'}
                 </span>
               </p>
             </div>
