@@ -196,6 +196,40 @@ exports.submitReport = async (req, res) => {
     const gpsZoneId = zoneService.getZoneId(parseFloat(latitude), parseFloat(longitude));
     const zoneStatus = await zoneService.checkZoneStatus(parseFloat(latitude), parseFloat(longitude));
 
+    // ── Anti-Fraud: Spatial-Temporal Duplicate Detection ────────────────────
+    // Block identical location reports within 25m radius in the last 24 hours
+    const lat = parseFloat(latitude);
+    const lng = parseFloat(longitude);
+    const EARTH_RADIUS_M = 6371000;
+    const DUPLICATE_RADIUS_M = 25;
+
+    const nearbyRes = await dbClient.query(
+      `SELECT id, latitude, longitude, user_id, created_at FROM reports
+       WHERE created_at > NOW() - INTERVAL '24 hours'
+         AND latitude IS NOT NULL AND longitude IS NOT NULL
+         AND ABS(latitude - $1) < 0.01 AND ABS(longitude - $2) < 0.01
+       LIMIT 20`,
+      [lat, lng]
+    );
+
+    const duplicateFound = nearbyRes.rows.some(r => {
+      const dLat = (parseFloat(r.latitude) - lat) * Math.PI / 180;
+      const dLng = (parseFloat(r.longitude) - lng) * Math.PI / 180;
+      const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat * Math.PI / 180) * Math.cos(parseFloat(r.latitude) * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+      const distanceM = EARTH_RADIUS_M * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return distanceM <= DUPLICATE_RADIUS_M;
+    });
+
+    if (duplicateFound) {
+      if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+      await dbClient.query('ROLLBACK');
+      return res.status(409).json({
+        error: 'A similar report already exists within 25 metres of this location in the last 24 hours.',
+        code: 'DUPLICATE_SPATIAL_REPORT',
+        isDuplicate: true,
+      });
+    }
+
     // ── Insert Report with State/District/Ward hierarchy ────────────────────
     const reportResult = await dbClient.query(
       `INSERT INTO reports
