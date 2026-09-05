@@ -44,15 +44,14 @@ export default function LeaderboardPage() {
     <div className="app-layout">
       <Sidebar />
       <main className="main-content">
-        <div className="page-header flex justify-between items-center">
+        <div className="page-header page-header-mobile">
           <div>
             <h1>🏆 Campus Leaderboard</h1>
             <p>See who is leading the clean campus initiative.</p>
           </div>
-          
-          <div className="flex gap-2 p-1 bg-slate-800 rounded-lg">
+          <div className="page-header-actions" style={{ background: 'rgba(15,23,42,0.7)', padding: '4px', borderRadius: '10px' }}>
             {['weekly', 'monthly', 'all_time'].map(p => (
-              <button 
+              <button
                 key={p}
                 className={`btn btn-sm ${period === p ? 'btn-primary' : 'btn-ghost'}`}
                 onClick={() => setPeriod(p)}
@@ -79,12 +78,17 @@ export default function LeaderboardPage() {
                 const badge = getRankBadge(student.rank);
                 const isMe = user?.id === student.id;
                 return (
-                  <div 
-                    key={student.id} 
-                    className="leaderboard-item flex items-center justify-between"
-                    style={{ 
-                      padding: '16px', 
-                      borderRadius: '12px', 
+                  <div
+                    key={student.id}
+                    className="leaderboard-item"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: '8px',
+                      padding: '14px 16px',
+                      borderRadius: '12px',
                       background: isMe ? 'rgba(16, 185, 129, 0.1)' : 'var(--glass-bg)',
                       border: isMe ? '1px solid var(--accent-green)' : '1px solid var(--glass-border)'
                     }}
