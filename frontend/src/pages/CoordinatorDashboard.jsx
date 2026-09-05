@@ -675,11 +675,12 @@ export default function CoordinatorDashboard() {
                   <tr>
                     <th>ID</th>
                     <th>Photo</th>
+                    <th>District &amp; Ward</th>
                     <th>Reporter</th>
                     <th>Type</th>
                     <th>AI Severity</th>
                     <th>SLA Timer</th>
-                    <th>Assigned Worker</th>
+                    <th>Assigned Sanitation Worker</th>
                     <th>Status</th>
                     <th>Actions</th>
                   </tr>
@@ -698,6 +699,10 @@ export default function CoordinatorDashboard() {
                         ) : (
                           <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>No Photo</span>
                         )}
+                      </td>
+                      <td>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#38bdf8' }}>📍 {r.district || 'Hyderabad'}</div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{r.ward_number || r.zone_name || 'Ward 1'}</div>
                       </td>
                       <td>
                         <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{r.reporter_name}</div>
