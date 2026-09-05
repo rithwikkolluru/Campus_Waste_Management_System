@@ -134,10 +134,17 @@ router.post('/assign/:reportId', authenticate, requireCoordinator, async (req, r
     }
 
     const severity = reportRes.rows[0].ai_severity || 5;
-    let slaHours = 48;
-    if (severity >= 9) slaHours = 2;
-    else if (severity >= 7) slaHours = 6;
-    else if (severity >= 4) slaHours = 24;
+    const priority = (reportRes.rows[0].priority || 'medium').toLowerCase();
+    
+    // Municipal SLA Standards:
+    // Critical (Severity >= 9 or High/Urgent) -> 2h Commercial / 4h Residential
+    // High (Severity >= 7) -> 6h
+    // Moderate (Severity >= 4) -> 12h
+    // Low -> 24h
+    let slaHours = 24;
+    if (severity >= 9 || priority === 'critical') slaHours = 2;
+    else if (severity >= 7 || priority === 'high') slaHours = 6;
+    else if (severity >= 4 || priority === 'medium') slaHours = 12;
 
     const slaDeadline = new Date(Date.now() + slaHours * 60 * 60 * 1000);
 
@@ -157,7 +164,7 @@ router.post('/assign/:reportId', authenticate, requireCoordinator, async (req, r
     );
 
     await client.query('COMMIT');
-    res.json({ success: true, sla_deadline: slaDeadline });
+    res.json({ success: true, sla_deadline: slaDeadline, sla_hours: slaHours });
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('Assignment error:', err.message);
