@@ -232,7 +232,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Tabs */}
-        <div className="tab-bar" style={{ flexWrap: 'wrap' }}>
+        <div className="tab-bar">
           {TABS.map(tab => (
             <button key={tab} className={`tab-btn ${activeTab === tab ? 'active' : ''}`}
               onClick={() => setActiveTab(tab)} id={`tab-${tab.toLowerCase().replace(/\s+/g, '-')}`}>
