@@ -7,22 +7,22 @@ import { Award, Gift, Target, CheckCircle2, Lock } from 'lucide-react';
 import './Dashboard.css';
 
 export const BADGE_TIERS = [
-  { points: 25000,  title: 'Bronze Badge 3',   icon: '🥉', color: 'linear-gradient(135deg, #cd7f32, #8c561b)' },
-  { points: 50000,  title: 'Bronze Badge 2',   icon: '🥉', color: 'linear-gradient(135deg, #cd7f32, #8c561b)' },
-  { points: 75000,  title: 'Bronze Badge 1',   icon: '🥉', color: 'linear-gradient(135deg, #cd7f32, #8c561b)' },
-  { points: 100000, title: 'Silver Badge 3',   icon: '🥈', color: 'linear-gradient(135deg, #c0c0c0, #737373)' },
-  { points: 125000, title: 'Silver Badge 2',   icon: '🥈', color: 'linear-gradient(135deg, #c0c0c0, #737373)' },
-  { points: 150000, title: 'Silver Badge 1',   icon: '🥈', color: 'linear-gradient(135deg, #c0c0c0, #737373)' },
-  { points: 175000, title: 'Gold Badge 3',     icon: '🏅', color: 'linear-gradient(135deg, #ffd700, #b8860b)' },
-  { points: 200000, title: 'Gold Badge 2',     icon: '🏅', color: 'linear-gradient(135deg, #ffd700, #b8860b)' },
-  { points: 225000, title: 'Gold Badge 1',     icon: '🏅', color: 'linear-gradient(135deg, #ffd700, #b8860b)' },
-  { points: 250000, title: 'Diamond Badge 3',  icon: '💎', color: 'linear-gradient(135deg, #b9f2ff, #4dd2ff)' },
-  { points: 275000, title: 'Diamond Badge 2',  icon: '💎', color: 'linear-gradient(135deg, #b9f2ff, #4dd2ff)' },
-  { points: 300000, title: 'Diamond Badge 1',  icon: '💎', color: 'linear-gradient(135deg, #b9f2ff, #4dd2ff)' },
-  { points: 325000, title: 'Platinum Badge 3', icon: '👑', color: 'linear-gradient(135deg, #e5e4e2, #a09d98)' },
-  { points: 350000, title: 'Platinum Badge 2', icon: '👑', color: 'linear-gradient(135deg, #e5e4e2, #a09d98)' },
-  { points: 375000, title: 'Platinum Badge 1', icon: '👑', color: 'linear-gradient(135deg, #e5e4e2, #a09d98)' },
-  { points: 400000, title: 'JNTUH Pride',      icon: '🏆', color: 'linear-gradient(135deg, #ffeb3b, #f57f17)', isUltimate: true },
+  { points: 25000,  title: 'Ward Volunteer 3',   icon: '🥉', color: 'linear-gradient(135deg, #cd7f32, #8c561b)' },
+  { points: 50000,  title: 'Ward Volunteer 2',   icon: '🥉', color: 'linear-gradient(135deg, #cd7f32, #8c561b)' },
+  { points: 75000,  title: 'Ward Volunteer 1',   icon: '🥉', color: 'linear-gradient(135deg, #cd7f32, #8c561b)' },
+  { points: 100000, title: 'Municipal Steward 3', icon: '🥈', color: 'linear-gradient(135deg, #c0c0c0, #737373)' },
+  { points: 125000, title: 'Municipal Steward 2', icon: '🥈', color: 'linear-gradient(135deg, #c0c0c0, #737373)' },
+  { points: 150000, title: 'Municipal Steward 1', icon: '🥈', color: 'linear-gradient(135deg, #c0c0c0, #737373)' },
+  { points: 175000, title: 'District Cleanliness Leader 3', icon: '🏅', color: 'linear-gradient(135deg, #ffd700, #b8860b)' },
+  { points: 200000, title: 'District Cleanliness Leader 2', icon: '🏅', color: 'linear-gradient(135deg, #ffd700, #b8860b)' },
+  { points: 225000, title: 'District Cleanliness Leader 1', icon: '🏅', color: 'linear-gradient(135deg, #ffd700, #b8860b)' },
+  { points: 250000, title: 'State Swachh Ambassador 3',  icon: '💎', color: 'linear-gradient(135deg, #b9f2ff, #4dd2ff)' },
+  { points: 275000, title: 'State Swachh Ambassador 2',  icon: '💎', color: 'linear-gradient(135deg, #b9f2ff, #4dd2ff)' },
+  { points: 300000, title: 'State Swachh Ambassador 1',  icon: '💎', color: 'linear-gradient(135deg, #b9f2ff, #4dd2ff)' },
+  { points: 325000, title: 'Telangana Eco Champion 3', icon: '👑', color: 'linear-gradient(135deg, #e5e4e2, #a09d98)' },
+  { points: 350000, title: 'Telangana Eco Champion 2', icon: '👑', color: 'linear-gradient(135deg, #e5e4e2, #a09d98)' },
+  { points: 375000, title: 'Telangana Eco Champion 1', icon: '👑', color: 'linear-gradient(135deg, #e5e4e2, #a09d98)' },
+  { points: 400000, title: 'Statewide Swachh Icon',   icon: '🏆', color: 'linear-gradient(135deg, #ffeb3b, #f57f17)', isUltimate: true },
 ];
 
 export default function AchievementsPage() {
@@ -30,7 +30,7 @@ export default function AchievementsPage() {
   const token = localStorage.getItem('ecocampus_token');
   const { points } = usePoints(token);
   const totalPoints = points.total_points || 0;
-  const [campusRank, setCampusRank] = useState(null);
+  const [districtRank, setDistrictRank] = useState(null);
 
   useEffect(() => {
     if (!token || !user?.id) return;
@@ -40,18 +40,19 @@ export default function AchievementsPage() {
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         const me = data?.leaderboard?.find((s) => Number(s.id) === Number(user.id));
-        if (me) setCampusRank(me.rank);
+        if (me) setDistrictRank(me.rank);
       })
       .catch(() => {});
   }, [token, user?.id]);
 
   // Milestone logic
   const totalEarnedRs = Math.floor(totalPoints / 1000) * 10;
+  const municipalTaxRebate = Math.floor(totalPoints / 2500) * 50;
   const pointsToNextRs = 1000 - (totalPoints % 1000);
   const rsProgress = (totalPoints % 1000) / 1000 * 100;
 
   // Rank logic
-  let currentRank = { title: 'Seedling', icon: '🌱', color: 'linear-gradient(135deg, #4ade80, #16a34a)' };
+  let currentRank = { title: 'Civic Seedling', icon: '🌱', color: 'linear-gradient(135deg, #4ade80, #16a34a)' };
   let nextRank = BADGE_TIERS[0];
   let rankIndex = -1;
 
@@ -76,8 +77,8 @@ export default function AchievementsPage() {
       <main className="main-content">
         <div className="page-header flex justify-between items-center">
           <div>
-            <h1>🏅 My Achievements & Rewards</h1>
-            <p>Track your milestones, unlocked badges, and earned vouchers.</p>
+            <h1>🏅 Civic Rewards & Municipal Achievements</h1>
+            <p>Earn municipal property tax rebates, utility discounts, and Swachh civic recognition.</p>
           </div>
           <div className="badge badge-primary" style={{ fontSize: '1.1rem', padding: '10px 16px' }}>
             <Award size={18} /> {totalPoints.toLocaleString()} Total Points
@@ -87,7 +88,7 @@ export default function AchievementsPage() {
         <div className="grid-2 mb-6" style={{ alignItems: 'stretch' }}>
           {/* Current Rank Card */}
           <div className="glass-card" style={{ padding: '32px', textAlign: 'center', background: currentRank.isUltimate ? 'linear-gradient(145deg, rgba(255,235,59,0.1), rgba(245,127,23,0.05))' : 'var(--glass-bg)', border: currentRank.isUltimate ? '1px solid rgba(255,235,59,0.3)' : '1px solid var(--glass-border)' }}>
-            <h3 className="text-lg font-semibold mb-6 text-left">Current Rank</h3>
+            <h3 className="text-lg font-semibold mb-6 text-left">Civic Cleanliness Rank</h3>
             <div style={{
               width: '120px', height: '120px', margin: '0 auto 20px', borderRadius: '50%',
               background: currentRank.color, display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -101,20 +102,20 @@ export default function AchievementsPage() {
             <h2 style={{ fontSize: '1.8rem', fontWeight: 700, marginBottom: '8px' }}>
               {currentRank.title}
             </h2>
-            {campusRank != null && (
+            {districtRank != null && (
               <div style={{
                 display: 'inline-flex', alignItems: 'center', gap: '6px',
                 background: 'rgba(251, 191, 36, 0.15)', border: '1px solid rgba(251, 191, 36, 0.35)',
                 borderRadius: '20px', padding: '6px 14px', marginBottom: '12px',
                 fontSize: '0.95rem', fontWeight: 600, color: '#fbbf24',
               }}>
-                🏆 Campus Rank #{campusRank}
+                🏆 District Rank #{districtRank}
               </div>
             )}
             <p className="text-muted" style={{ marginBottom: '24px' }}>
               {currentRank.isUltimate 
-                ? "You've achieved the ultimate JNTUH Pride status! Thank you for keeping our campus clean!"
-                : "Keep uploading reports to reach the next tier!"}
+                ? "You've achieved the ultimate Statewide Swachh Icon status! Thank you for transforming our state!"
+                : "Keep reporting civic cleanliness issues to unlock higher municipal tax rebates!"}
             </p>
 
             {!currentRank.isUltimate && nextRank && (
@@ -131,31 +132,31 @@ export default function AchievementsPage() {
             )}
           </div>
 
-          {/* Vouchers & Rewards Card */}
+          {/* Municipal Vouchers & Rewards Card */}
           <div className="glass-card" style={{ padding: '32px' }}>
-             <h3 className="text-lg font-semibold mb-6 flex items-center gap-2"><Gift className="text-green" /> Cash Rewards</h3>
-             <div style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.15), rgba(16,185,129,0.02))', padding: '24px', borderRadius: '16px', border: '1px solid rgba(16,185,129,0.2)', textAlign: 'center', marginBottom: '24px' }}>
-                <span className="text-muted" style={{ display: 'block', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '1px', fontSize: '0.8rem' }}>Total Earned</span>
-                <span style={{ fontSize: '3.5rem', fontWeight: 800, color: 'var(--accent-green)', lineHeight: 1 }}>₹{totalEarnedRs}</span>
-                <p className="text-sm mt-4 text-secondary">Earn ₹10 for every 1,000 points.</p>
+             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2"><Gift className="text-green" /> Civic Vouchers & Tax Rebates</h3>
+             <div style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.15), rgba(16,185,129,0.02))', padding: '20px', borderRadius: '16px', border: '1px solid rgba(16,185,129,0.2)', textAlign: 'center', marginBottom: '16px' }}>
+                <span className="text-muted" style={{ display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '1px', fontSize: '0.75rem' }}>Municipal Property Tax Rebate</span>
+                <span style={{ fontSize: '3rem', fontWeight: 800, color: 'var(--accent-green)', lineHeight: 1 }}>₹{municipalTaxRebate}</span>
+                <p className="text-xs mt-3 text-secondary">Redeemable against GHMC / Municipal Property Tax & Water Utility Bills.</p>
              </div>
 
-             <div style={{ background: 'rgba(0,0,0,0.2)', padding: '20px', borderRadius: '16px' }}>
-                <div className="flex justify-between items-center mb-3">
-                  <span className="text-sm font-semibold flex items-center gap-2"><Target size={14} /> Progress to next ₹10</span>
-                  <span className="text-sm font-bold text-green">{totalPoints % 1000} / 1000</span>
+             <div style={{ background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '14px', marginBottom: '16px' }}>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-xs font-semibold flex items-center gap-1"><Target size={14} /> Direct Cash Reward: ₹{totalEarnedRs}</span>
+                  <span className="text-xs font-bold text-green">{totalPoints % 1000} / 1000</span>
                 </div>
-                <div className="w-full bg-slate-800 rounded-full h-2 mb-2">
+                <div className="w-full bg-slate-800 rounded-full h-2 mb-1">
                   <div className="h-2 rounded-full bg-green-500" style={{ width: `${rsProgress}%` }}></div>
                 </div>
-                <p className="text-xs text-muted text-right">Just {pointsToNextRs} more points!</p>
+                <p className="text-xs text-muted text-right">{pointsToNextRs} points to next ₹10</p>
              </div>
           </div>
         </div>
 
         {/* Badge Journey */}
         <div className="glass-card" style={{ padding: '24px' }}>
-          <h3 className="text-lg font-semibold mb-6">The Road to JNTUH Pride</h3>
+          <h3 className="text-lg font-semibold mb-6">The Road to Statewide Swachh Icon</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {BADGE_TIERS.map((tier, idx) => {
               const isUnlocked = totalPoints >= tier.points;
