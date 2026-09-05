@@ -1584,3 +1584,79 @@
   .location-card { padding: 10px 12px; }
 }
 
+/* ============================================================
+   Additional Mobile Fixes — Achievements, Report, Coordinator
+   ============================================================ */
+
+/* Achievements page badge grid */
+@media (max-width: 768px) {
+  .badge-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px;
+  }
+  .badge-card { padding: 14px 10px; text-align: center; }
+  .badge-card .badge-icon { font-size: 2rem; }
+  .badge-card .badge-title { font-size: 0.8rem; }
+
+  /* Report page location card */
+  .location-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 12px;
+  }
+
+  /* Coordinator overview stats row */
+  .coordinator-stat-row {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px;
+  }
+
+  /* Supply request cards */
+  .supply-request-card { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .supply-request-actions { width: 100%; justify-content: flex-start; }
+
+  /* Worker cards */
+  .worker-card { flex-wrap: wrap; }
+  .worker-actions { width: 100%; margin-top: 8px; }
+
+  /* Zone analytics table wrapper */
+  .zone-analytics-table { overflow-x: auto; }
+
+  /* Map height on mobile */
+  .leaflet-container { height: 280px !important; }
+}
+
+@media (max-width: 480px) {
+  .badge-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px;
+  }
+  .badge-card { padding: 10px 8px; }
+  .badge-card .badge-icon { font-size: 1.6rem; }
+
+  /* Report form image preview */
+  .drop-zone { padding: 20px 10px; }
+  .drop-icon { font-size: 1.8rem; }
+
+  /* Coordinator dispatch form */
+  .dispatch-select { font-size: 0.78rem; padding: 3px 6px; }
+  .assign-select { min-width: unset; width: 100%; }
+
+  /* Leaflet map smaller on mobile */
+  .leaflet-container { height: 240px !important; }
+
+  /* Report mini cards */
+  .report-mini-card { padding: 8px; font-size: 0.8rem; }
+
+  /* Success overlay buttons stack */
+  .success-actions { flex-direction: column; gap: 8px; }
+  .success-actions .btn { width: 100%; justify-content: center; }
+
+  /* SLA timer badge */
+  .sla-badge { font-size: 0.65rem; padding: 2px 6px; }
+
+  /* Page header actions on all pages */
+  .page-header-actions { width: 100%; }
+  .page-header-actions .btn { flex: 1; justify-content: center; min-width: 0; }
+}
