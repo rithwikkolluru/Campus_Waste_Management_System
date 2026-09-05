@@ -9,6 +9,7 @@ import usePoints from '../hooks/usePoints';
 import { API_BASE_URL } from '../config';
 import { analyzeImageLocal, loadYoloModel } from '../utils/yoloClassifier';
 import { reverseGeocode } from '../utils/geoCoder';
+import { STATES_AND_DISTRICTS, MUNICIPAL_CORPORATIONS, DEFAULT_WARDS } from '../data/administrativeData';
 import './Dashboard.css';
 import CameraCapture from '../components/CameraCapture';
 import LocationVerifier from '../components/LocationVerifier';
@@ -90,6 +91,9 @@ export default function ReportGarbage() {
   const [locationVerified, setLocationVerified] = useState(false);
   const [coords, setCoords] = useState({ lat: null, lng: null, accuracy: null });
   const [geoDetails, setGeoDetails] = useState(null);
+  const [selectedState, setSelectedState] = useState('Telangana');
+  const [selectedDistrict, setSelectedDistrict] = useState('Hyderabad');
+  const [selectedWard, setSelectedWard] = useState('Ward 1 - Central Circle');
   const [locationError, setLocationError] = useState(null);
   const [zoneStatus, setZoneStatus] = useState(null);
   const [zoneAnnouncements, setZoneAnnouncements] = useState([]);
@@ -493,10 +497,75 @@ export default function ReportGarbage() {
               )}
             </div>
 
-            {/* ── Zone Selection ─────────────────────────────────────────── */}
+            {/* ── Administrative Geo-Hierarchy (State / District / Ward) ────── */}
             <div className="form-section">
               <div className="form-section-title">
-                <MapPin size={18} color="var(--accent-green)" /> Select Campus Zone
+                <MapPin size={18} color="var(--accent-green)" /> Administrative Division &amp; Ward
+              </div>
+              <div className="grid-3 gap-3 mb-4">
+                <div>
+                  <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>
+                    State
+                  </label>
+                  <select
+                    className="input-field"
+                    value={selectedState}
+                    onChange={(e) => {
+                      const st = e.target.value;
+                      setSelectedState(st);
+                      const dists = STATES_AND_DISTRICTS[st] || [];
+                      if (dists.length > 0) setSelectedDistrict(dists[0]);
+                    }}
+                    style={{ width: '100%', padding: '10px', fontSize: '0.85rem' }}
+                  >
+                    {Object.keys(STATES_AND_DISTRICTS).map(st => (
+                      <option key={st} value={st}>{st}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>
+                    District
+                  </label>
+                  <select
+                    className="input-field"
+                    value={selectedDistrict}
+                    onChange={(e) => setSelectedDistrict(e.target.value)}
+                    style={{ width: '100%', padding: '10px', fontSize: '0.85rem' }}
+                  >
+                    {(STATES_AND_DISTRICTS[selectedState] || []).map(dist => (
+                      <option key={dist} value={dist}>{dist}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>
+                    Ward / Local Sector
+                  </label>
+                  <select
+                    className="input-field"
+                    value={selectedWard}
+                    onChange={(e) => {
+                      setSelectedWard(e.target.value);
+                      setZone(e.target.value);
+                    }}
+                    style={{ width: '100%', padding: '10px', fontSize: '0.85rem' }}
+                  >
+                    {DEFAULT_WARDS.map(w => (
+                      <option key={w} value={w}>{w}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '12px' }}>
+                🏛️ Assigned Corporation: <strong style={{ color: 'var(--accent-green)' }}>{MUNICIPAL_CORPORATIONS[selectedDistrict] || `${selectedDistrict} Municipality`}</strong>
+              </div>
+
+              <div className="form-section-title" style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                📍 Spot / Micro-Location
               </div>
               <div className="zone-grid" style={!locationVerified ? { pointerEvents: 'none', opacity: 0.6 } : {}}>
                 {ZONES.map(z => (
