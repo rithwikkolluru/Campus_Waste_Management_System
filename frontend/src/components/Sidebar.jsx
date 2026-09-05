@@ -82,7 +82,6 @@ export default function Sidebar() {
           {!collapsed && (
             <div className="sidebar-brand-text">
               <span className="sidebar-brand-name">CleanGuard Campus</span>
-              <span className="sidebar-brand-sub jntuh-glow">JNTUHUCESTH</span>
             </div>
           )}
           <button className="collapse-btn desktop-only" onClick={() => setCollapsed(!collapsed)} id="collapse-sidebar">
