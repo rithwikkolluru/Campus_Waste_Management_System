@@ -9,6 +9,7 @@ const scripts = [
   'migrate_v5.js',
   'migrate_gps.js',
   'migrate_notifications.js',
+  'migrate_v6_state_hierarchy.js',
   'seed_demo_data.js'
 ];
 
