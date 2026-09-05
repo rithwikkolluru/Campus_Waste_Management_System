@@ -198,6 +198,26 @@ export default function StudentDashboard() {
                  <p className="text-xs text-muted text-right">{Math.max(0, points.monthly_limit - points.monthly_earned)} pts remaining this month</p>
               </div>
            </div>
+
+           {/* Civic Ward Performance Tracker */}
+           <div className="grid-4 gap-3 mt-4">
+             <div className="glass-card" style={{ padding: '12px 16px', background: 'rgba(15,23,42,0.6)', border: '1px solid var(--glass-border)' }}>
+               <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>📍 Assigned District</div>
+               <div style={{ fontSize: '1rem', fontWeight: 700, color: '#38bdf8' }}>{user?.district || 'Hyderabad'}</div>
+             </div>
+             <div className="glass-card" style={{ padding: '12px 16px', background: 'rgba(15,23,42,0.6)', border: '1px solid var(--glass-border)' }}>
+               <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>✅ My Resolved Reports</div>
+               <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--accent-green)' }}>{myReports.filter(r => r.status === 'Resolved').length} Resolved</div>
+             </div>
+             <div className="glass-card" style={{ padding: '12px 16px', background: 'rgba(15,23,42,0.6)', border: '1px solid var(--glass-border)' }}>
+               <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>⏱️ Active Incidents</div>
+               <div style={{ fontSize: '1rem', fontWeight: 700, color: '#f59e0b' }}>{myReports.filter(r => r.status !== 'Resolved').length} In Progress</div>
+             </div>
+             <div className="glass-card" style={{ padding: '12px 16px', background: 'rgba(15,23,42,0.6)', border: '1px solid var(--glass-border)' }}>
+               <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>🏆 Ward Cleanliness Score</div>
+               <div style={{ fontSize: '1rem', fontWeight: 700, color: '#a78bfa' }}>96.4% Clean</div>
+             </div>
+           </div>
         </div>
 
         <div className="grid-2 mb-6" style={{ alignItems: 'start' }}>
