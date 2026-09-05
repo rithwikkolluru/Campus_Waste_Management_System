@@ -2,9 +2,9 @@
 
 <img src="https://img.shields.io/badge/EcoCampus-Waste%20Management-22c55e?style=for-the-badge&logo=leaf&logoColor=white" alt="EcoCampus"/>
 
-# 🌱 CleanGuard — Smart Campus Waste Management System
+# 🏛️ CleanState AI — Statewide Civic Cleanliness & Municipal Waste Intelligence Platform
 
-### *Transforming waste reporting into a gamified, AI-powered campus experience*
+### *Transforming civic waste management into an AI-powered, state-level municipal intelligence ecosystem*
 
 [![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react)](https://react.dev)
 [![Vite](https://img.shields.io/badge/Vite-5-646CFF?style=flat-square&logo=vite)](https://vitejs.dev)
@@ -17,7 +17,7 @@
 
 <br/>
 
-> **CleanGuard** is a full-stack web application that empowers students to report campus waste in real time using AI-powered photo classification, GPS-verified location tracking, gamified reward points, and live heatmaps — turning environmental responsibility into a community-driven experience.
+> **CleanState AI** is an enterprise-grade full-stack civic intelligence platform expanding across Telangana and municipal urban local bodies (ULBs). Empowering citizens to report civic garbage in real time using AI-powered classification, automated reverse-geocoding (State, District, Municipality, Ward), spatial-temporal anti-fraud protection, Swachh benchmark rankings, municipal tax rebate rewards, and dynamic GIS district heatmaps.
 
 <br/>
 
