@@ -198,21 +198,82 @@ router.get('/weekly-report', authenticate, requireAdmin, async (req, res) => {
   }
 });
 
-// ── Cron: auto-generate every Monday 8am ────────────────────────────────────
-const cron = require('node-cron');
-cron.schedule('0 8 * * 1', async () => {
+// ── State & District Level Analytics ───────────────────────────────────────
+router.get('/districts', authenticate, requireAdmin, async (req, res) => {
   try {
-    console.log('🤖 Auto-generating weekly waste report...');
-    const weekData   = await fetchWeekData();
-    const aiAnalysis = await generateWeeklyReport(weekData);
-    await pool.query(
-      `INSERT INTO weekly_reports (week_start, week_end, report_data, ai_analysis)
-       VALUES ($1, $2, $3, $4)`,
-      [weekData.weekStart, weekData.weekEnd, JSON.stringify(weekData), JSON.stringify(aiAnalysis)]
-    );
-    console.log('✅ Weekly report generated and saved.');
+    const query = `
+      SELECT 
+        COALESCE(r.district, 'Hyderabad') AS district,
+        COALESCE(r.state, 'Telangana') AS state,
+        COUNT(r.id) AS total_reports,
+        SUM(CASE WHEN r.status = 'resolved' THEN 1 ELSE 0 END) AS resolved_reports,
+        SUM(CASE WHEN r.status != 'resolved' THEN 1 ELSE 0 END) AS active_reports,
+        ROUND(AVG(COALESCE(r.ai_severity, 5)), 1) AS avg_severity
+      FROM reports r
+      GROUP BY COALESCE(r.district, 'Hyderabad'), COALESCE(r.state, 'Telangana')
+      ORDER BY total_reports DESC;
+    `;
+    const result = await pool.query(query);
+    res.json({ success: true, districts: result.rows });
   } catch (err) {
-    console.error('❌ Cron weekly report error:', err.message);
+    console.error('District analytics error:', err.message);
+    res.status(500).json({ error: 'Failed to fetch district statistics' });
+  }
+});
+
+router.get('/statewide-stats', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const [summaryRes, districtRankRes, wasteTypeRes] = await Promise.all([
+      pool.query(`
+        SELECT 
+          COUNT(*) AS total_state_reports,
+          SUM(CASE WHEN status = 'resolved' THEN 1 ELSE 0 END) AS total_resolved,
+          SUM(CASE WHEN status != 'resolved' THEN 1 ELSE 0 END) AS total_active,
+          COUNT(DISTINCT district) AS covered_districts,
+          COUNT(DISTINCT user_id) AS active_citizens
+        FROM reports;
+      `),
+      pool.query(`
+        SELECT 
+          COALESCE(district, 'Hyderabad') AS district,
+          COUNT(*) AS total,
+          SUM(CASE WHEN status = 'resolved' THEN 1 ELSE 0 END) AS resolved,
+          ROUND((SUM(CASE WHEN status = 'resolved' THEN 1.0 ELSE 0.0 END) / NULLIF(COUNT(*), 0) * 100), 1) AS resolution_rate
+        FROM reports
+        GROUP BY COALESCE(district, 'Hyderabad')
+        ORDER BY resolution_rate DESC, total DESC;
+      `),
+      pool.query(`
+        SELECT 
+          COALESCE(waste_type, 'General Waste') AS waste_type,
+          COUNT(*) AS count
+        FROM reports
+        GROUP BY COALESCE(waste_type, 'General Waste')
+        ORDER BY count DESC;
+      `),
+    ]);
+
+    const summary = summaryRes.rows[0];
+    const total = parseInt(summary.total_state_reports) || 0;
+    const resolved = parseInt(summary.total_resolved) || 0;
+
+    res.json({
+      success: true,
+      state: 'Telangana',
+      summary: {
+        totalReports: total,
+        resolvedReports: resolved,
+        activeReports: parseInt(summary.total_active) || 0,
+        resolutionPercentage: total > 0 ? Math.round((resolved / total) * 100) : 0,
+        coveredDistricts: parseInt(summary.covered_districts) || 1,
+        activeCitizens: parseInt(summary.active_citizens) || 0,
+      },
+      districtRankings: districtRankRes.rows,
+      wasteBreakdown: wasteTypeRes.rows,
+    });
+  } catch (err) {
+    console.error('Statewide stats error:', err.message);
+    res.status(500).json({ error: 'Failed to fetch statewide analytics' });
   }
 });
 
