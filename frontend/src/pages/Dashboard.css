@@ -1641,4 +1641,17 @@
   /* Page header actions on all pages */
   .page-header-actions { width: 100%; }
   .page-header-actions .btn { flex: 1; justify-content: center; min-width: 0; }
+
+  /* Statewide Directorate mobile enhancements */
+  .statewide-directorate-section .grid-4 {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
 }
+
+@media (max-width: 375px) {
+  .statewide-directorate-section .grid-4 {
+    grid-template-columns: 1fr !important;
+  }
+}
+
