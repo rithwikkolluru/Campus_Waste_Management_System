@@ -291,7 +291,17 @@ router.get('/bins', authenticate, requireCoordinator, async (req, res) => {
     const coordZone = req.user.assigned_zone;
     const zoneClause = coordZone ? 'WHERE b.zone_id = $1 AND b.status = \'active\'' : 'WHERE b.status = \'active\'';
     const result = await pool.query(
-      `SELECT b.*, z.name as zone_name FROM bins b LEFT JOIN zones z ON b.zone_id = z.id ${zoneClause} ORDER BY b.created_at DESC`,
+      `SELECT b.*, 
+              COALESCE(z.name, 'Ward Community Bin') as zone_name,
+              CASE 
+                WHEN b.fill_level >= 85 THEN 'Critical - Immediate Emptying Required'
+                WHEN b.fill_level >= 60 THEN 'Moderate - Scheduled Clearance'
+                ELSE 'Optimal Capacity'
+              END as capacity_status
+       FROM bins b 
+       LEFT JOIN zones z ON b.zone_id = z.id 
+       ${zoneClause} 
+       ORDER BY b.fill_level DESC, b.created_at DESC`,
       coordZone ? [coordZone] : []
     );
     res.json({ bins: result.rows });
