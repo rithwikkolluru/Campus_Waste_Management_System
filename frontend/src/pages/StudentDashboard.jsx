@@ -56,7 +56,10 @@ export default function StudentDashboard() {
         const mapped = data.reports.map(r => ({
           id: `RPT-00${r.id}`,
           dbId: r.id,
-          zone: r.location || r.zone_name || 'Campus',
+          zone: r.location || r.zone_name || 'General Ward',
+          state: r.state || 'Telangana',
+          district: r.district || 'Hyderabad',
+          ward: r.ward_number || 'Ward 1',
           desc: r.description,
           type: r.waste_type,
           status: formatStatus(r.status),
@@ -104,8 +107,8 @@ export default function StudentDashboard() {
     if (!sessionStorage.getItem(key)) {
       showToast({
         type: 'info',
-        title: `Welcome back, ${user?.name?.split(' ')[0] || 'Student'}! 👋`,
-        message: `You have ${myReports.filter(r => r.status !== 'Resolved').length} pending reports.`,
+        title: `Welcome back, ${user?.name?.split(' ')[0] || 'Citizen'}! 👋`,
+        message: `You have ${myReports.filter(r => r.status !== 'Resolved').length} active reports in your district.`,
         duration: 5000,
       });
       sessionStorage.setItem(key, '1');
@@ -113,7 +116,10 @@ export default function StudentDashboard() {
   }, [user, showToast, myReports.length]);
 
   const filtered = myReports.filter(r => {
-    const matchSearch = r.id.toLowerCase().includes(search.toLowerCase()) || r.zone.toLowerCase().includes(search.toLowerCase()) || r.desc.toLowerCase().includes(search.toLowerCase());
+    const matchSearch = r.id.toLowerCase().includes(search.toLowerCase()) || 
+      r.zone.toLowerCase().includes(search.toLowerCase()) || 
+      (r.district && r.district.toLowerCase().includes(search.toLowerCase())) ||
+      r.desc.toLowerCase().includes(search.toLowerCase());
     const matchStatus = filterStatus === 'All' || r.status === filterStatus;
     return matchSearch && matchStatus;
   });
@@ -128,13 +134,21 @@ export default function StudentDashboard() {
         {/* Header */}
         <div className="page-header page-header-mobile">
           <div>
-            <h1>👋 Hello, {user?.name?.split(' ')[0] || 'Student'}!</h1>
-            <p>Upload garbage photos to earn points and keep campus clean.</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+              <span className="badge badge-primary" style={{ fontSize: '0.72rem', padding: '3px 10px' }}>
+                📍 {user?.district || 'Hyderabad'} District
+              </span>
+              <span className="badge" style={{ background: 'rgba(59,130,246,0.15)', color: '#60a5fa', fontSize: '0.72rem', padding: '3px 10px' }}>
+                🏛️ Citizen Portal
+              </span>
+            </div>
+            <h1>👋 Hello, {user?.name?.split(' ')[0] || 'Citizen'}!</h1>
+            <p>Report civic garbage spots to earn rewards &amp; keep your municipal ward clean.</p>
           </div>
           <div className="page-header-actions">
             <NotificationBell />
             <button className="btn btn-primary" onClick={() => navigate('/report')} id="quick-report-btn">
-              <Plus size={18} /> Upload Photo (+5 pts)
+              <Plus size={18} /> Report Garbage (+15 pts)
             </button>
           </div>
         </div>
@@ -324,7 +338,7 @@ export default function StudentDashboard() {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>ID</th><th>Photo</th><th>Zone</th><th>Type</th><th>Description</th><th>Status</th><th>Priority</th><th>Date</th>
+                  <th>ID</th><th>Photo</th><th>District &amp; Ward</th><th>Type</th><th>Description</th><th>Status</th><th>Priority</th><th>Date</th>
                 </tr>
               </thead>
               <tbody>
@@ -350,7 +364,10 @@ export default function StudentDashboard() {
                         </div>
                       )}
                     </td>
-                    <td>📍 {r.zone}</td>
+                    <td>
+                      <div style={{ fontWeight: 600 }}>📍 {r.district || 'Hyderabad'}</div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{r.ward || r.zone}</div>
+                    </td>
                     <td>{r.type}</td>
                     <td style={{ maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.desc}</td>
                     <td><span className={`badge ${STATUS_COLOR[r.status]}`}>{r.status}</span></td>
