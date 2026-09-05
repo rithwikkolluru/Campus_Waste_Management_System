@@ -52,9 +52,30 @@ async function ensureUserInDb(req, client = pool) {
 router.get('/reports', authenticate, requireCoordinator, async (req, res) => {
   try {
     const coordZone = req.user.assigned_zone;
+    const { district, ward } = req.query;
+
+    let whereClauses = [];
+    let params = [];
+
+    if (coordZone) {
+      params.push(coordZone);
+      whereClauses.push(`r.zone_id = $${params.length}`);
+    }
+    if (district) {
+      params.push(district);
+      whereClauses.push(`r.district = $${params.length}`);
+    }
+    if (ward) {
+      params.push(ward);
+      whereClauses.push(`r.ward_number = $${params.length}`);
+    }
+
+    const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
     const result = await pool.query(`
       SELECT r.id, r.description, r.waste_type, r.priority, r.status,
              r.latitude, r.longitude,
+             r.state, r.district, r.city_municipality, r.ward_number, r.pincode, r.formatted_address,
              r.created_at, r.updated_at, r.sla_deadline,
              r.verified_photo_url, r.verified_at,
              r.ai_severity, r.ai_priority, r.ai_description,
@@ -73,10 +94,10 @@ router.get('/reports', authenticate, requireCoordinator, async (req, res) => {
       LEFT JOIN assignments a ON a.report_id = r.id
       LEFT JOIN users wu ON a.staff_id = wu.id
       LEFT JOIN report_photos rp ON r.id = rp.report_id
-      ${coordZone ? 'WHERE r.zone_id = $1' : ''}
+      ${whereSql}
       GROUP BY r.id, u.name, u.email, z.name, a.staff_id, wu.name
       ORDER BY r.created_at DESC
-    `, coordZone ? [coordZone] : []);
+    `, params);
     res.json({ reports: result.rows });
   } catch (err) {
     console.error('Coordinator reports error:', err.message);
