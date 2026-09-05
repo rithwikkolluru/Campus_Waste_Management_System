@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
 import {
@@ -42,6 +42,7 @@ const ROLE_LABELS = { student: 'Student', coordinator: 'Zone Coordinator', admin
 export default function Sidebar() {
   const { user, logout }     = useAuth();
   const navigate             = useNavigate();
+  const location             = useLocation();
   const { unreadCount }      = useNotifications();
   const [collapsed, setCollapsed]   = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -50,6 +51,23 @@ export default function Sidebar() {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
+
+  // Automatically close sidebar when navigating to a new route
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location.pathname, location.search]);
+
+  // Lock background body scroll when mobile sidebar drawer is open
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [mobileOpen]);
 
   const toggleTheme = () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
@@ -66,12 +84,26 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* Mobile toggle */}
-      <button className="mobile-menu-btn" onClick={() => setMobileOpen(!mobileOpen)} id="sidebar-toggle">
-        {mobileOpen ? <X size={22} /> : <Menu size={22} />}
-      </button>
+      {/* Mobile hamburger menu toggle button — visible when drawer is closed */}
+      {!mobileOpen && (
+        <button
+          className="mobile-menu-btn"
+          onClick={() => setMobileOpen(true)}
+          id="sidebar-toggle"
+          aria-label="Open Navigation Menu"
+        >
+          <Menu size={22} />
+        </button>
+      )}
 
-      {mobileOpen && <div className="sidebar-overlay" onClick={() => setMobileOpen(false)} />}
+      {/* Mobile background overlay */}
+      {mobileOpen && (
+        <div
+          className="sidebar-overlay"
+          onClick={() => setMobileOpen(false)}
+          aria-label="Close Navigation Overlay"
+        />
+      )}
 
       <aside className={`sidebar ${collapsed ? 'sidebar-collapsed' : ''} ${mobileOpen ? 'sidebar-open' : ''}`}>
         {/* Brand */}
@@ -84,21 +116,50 @@ export default function Sidebar() {
               <span className="sidebar-brand-name">CleanGuard Campus</span>
             </div>
           )}
-          <button className="collapse-btn desktop-only" onClick={() => setCollapsed(!collapsed)} id="collapse-sidebar">
-            <ChevronDown size={16} style={{ transform: collapsed ? 'rotate(-90deg)' : 'rotate(90deg)', transition: 'transform 0.3s' }} />
+          {/* Desktop collapse toggle */}
+          <button
+            className="collapse-btn desktop-only"
+            onClick={() => setCollapsed(!collapsed)}
+            id="collapse-sidebar"
+            aria-label="Toggle Collapse"
+          >
+            <ChevronDown
+              size={16}
+              style={{
+                transform: collapsed ? 'rotate(-90deg)' : 'rotate(90deg)',
+                transition: 'transform 0.3s'
+              }}
+            />
+          </button>
+          {/* Mobile close (X) button inside the brand header */}
+          <button
+            className="mobile-close-btn mobile-only"
+            onClick={() => setMobileOpen(false)}
+            id="sidebar-close-btn"
+            aria-label="Close Navigation Menu"
+          >
+            <X size={20} />
           </button>
         </div>
 
         {/* User card */}
         <div className={`sidebar-user ${collapsed ? 'collapsed' : ''}`}>
-          <div className="sidebar-avatar" style={{ background: `linear-gradient(135deg, ${ROLE_COLORS[user?.role]}, ${ROLE_COLORS[user?.role]}88)` }}>
-            {user?.avatar}
+          <div
+            className="sidebar-avatar"
+            style={{
+              background: `linear-gradient(135deg, ${ROLE_COLORS[user?.role] || '#10b981'}, ${ROLE_COLORS[user?.role] || '#10b981'}88)`
+            }}
+          >
+            {user?.avatar || '👤'}
           </div>
           {!collapsed && (
             <div className="sidebar-user-info">
-              <span className="sidebar-user-name">{user?.name}</span>
-              <span className="sidebar-user-role" style={{ color: ROLE_COLORS[user?.role] }}>
-                {ROLE_LABELS[user?.role]}
+              <span className="sidebar-user-name">{user?.name || 'User'}</span>
+              <span
+                className="sidebar-user-role"
+                style={{ color: ROLE_COLORS[user?.role] || '#10b981' }}
+              >
+                {ROLE_LABELS[user?.role] || 'Member'}
               </span>
             </div>
           )}

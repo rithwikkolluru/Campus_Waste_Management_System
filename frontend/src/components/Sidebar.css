@@ -246,43 +246,113 @@
   z-index: 99;
 }
 .desktop-only { display: flex; }
+.mobile-only { display: none; }
 
-/* --- Tablet (≤1024px): icon-only sidebar --- */
-@media (max-width: 1024px) {
+/* --- Tablet (769px to 1024px): icon-only sidebar --- */
+@media (min-width: 769px) and (max-width: 1024px) {
   .sidebar { width: 72px; }
   .sidebar .sidebar-brand-text,
   .sidebar .sidebar-user-info,
   .sidebar .sidebar-section-label,
   .sidebar-nav-item span,
   .sidebar-zone-badge,
-  .sidebar-notif-pill { display: none; }
+  .sidebar-notif-pill { display: none !important; }
   .sidebar-user { justify-content: center; padding: 8px; }
   .sidebar-brand { justify-content: center; padding: 8px 8px 16px; }
-  .collapse-btn.desktop-only { display: none; }
+  .collapse-btn.desktop-only { display: none !important; }
   .sidebar-nav-item { justify-content: center; padding: 10px; }
 }
 
-/* --- Mobile (≤768px): off-canvas sidebar --- */
+/* --- Mobile (≤768px): off-canvas drawer sidebar --- */
 @media (max-width: 768px) {
-  .mobile-menu-btn { display: flex; }
-  .sidebar {
-    transform: translateX(-100%);
-    width: 280px !important;
-    transition: transform 0.3s ease;
-    padding-top: 70px; /* space below hamburger button */
-    z-index: 101;
+  .mobile-menu-btn {
+    display: flex;
+    position: fixed;
+    top: 14px;
+    left: 14px;
+    z-index: 150;
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--glass-border);
+    color: var(--text-primary);
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+    transition: all 0.2s ease;
   }
-  .sidebar.sidebar-open { transform: translateX(0); }
-  .sidebar.sidebar-open .sidebar-brand-text,
-  .sidebar.sidebar-open .sidebar-user-info,
-  .sidebar.sidebar-open .sidebar-section-label,
-  .sidebar.sidebar-open .sidebar-nav-item span,
-  .sidebar.sidebar-open .sidebar-zone-badge,
-  .sidebar.sidebar-open .sidebar-notif-pill { display: revert; }
-  .sidebar.sidebar-open .sidebar-user { justify-content: flex-start; padding: 12px; }
-  .sidebar.sidebar-open .sidebar-brand { justify-content: flex-start; padding: 12px 12px 16px; }
-  .sidebar.sidebar-open .sidebar-nav-item { justify-content: flex-start; padding: 12px 14px; }
-  .sidebar-overlay { display: block; z-index: 100; }
-  .desktop-only { display: none; }
+  .mobile-menu-btn:hover {
+    border-color: var(--accent-green);
+    color: var(--accent-green);
+  }
+
+  .sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    width: 280px !important;
+    max-width: 85vw !important;
+    height: 100% !important;
+    height: 100dvh !important;
+    background: var(--bg-secondary) !important;
+    border-right: 1px solid var(--glass-border);
+    z-index: 1000 !important;
+    transform: translateX(-100%) !important;
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    padding: 16px 12px;
+    box-shadow: none;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .sidebar.sidebar-open {
+    transform: translateX(0) !important;
+    box-shadow: 0 0 50px rgba(0, 0, 0, 0.6) !important;
+  }
+
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 999;
+    animation: fadeIn 0.2s ease forwards;
+  }
+
+  .desktop-only { display: none !important; }
+  .mobile-only { display: flex !important; }
+
+  .mobile-close-btn {
+    margin-left: auto;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    border: 1px solid var(--glass-border);
+    background: var(--bg-card);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.2s;
+  }
+  .mobile-close-btn:hover {
+    border-color: var(--accent-red);
+    color: var(--accent-red);
+  }
+}
+
+@media (min-width: 769px) {
+  .mobile-menu-btn { display: none !important; }
+  .mobile-close-btn { display: none !important; }
+  .mobile-only { display: none !important; }
 }
 

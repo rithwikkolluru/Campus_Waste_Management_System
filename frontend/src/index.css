@@ -680,8 +680,8 @@ ul, ol { list-style: none; }
   .container { max-width: 1060px; }
 }
 
-/* --- Tablet landscape (≤1024px) --- */
-@media (max-width: 1024px) {
+/* --- Tablet landscape (769px to 1024px) --- */
+@media (min-width: 769px) and (max-width: 1024px) {
   .main-content { padding: 20px; margin-left: 72px; }
   .grid-4 { grid-template-columns: repeat(2, 1fr); }
   .grid-3 { grid-template-columns: repeat(2, 1fr); }
@@ -689,23 +689,33 @@ ul, ol { list-style: none; }
   .container { max-width: 100%; }
 }
 
-/* --- Tablet portrait / Mobile (≤768px) --- */
+/* --- Mobile (≤768px) --- */
 @media (max-width: 768px) {
   :root { --sidebar-width: 0px; }
 
   /* Core layout — force no sidebar margin on ALL pages */
-  .app-layout { display: block; }
+  .app-layout {
+    display: block !important;
+    width: 100% !important;
+    min-height: 100vh;
+  }
   .main-content {
     margin-left: 0 !important;
     padding: 16px !important;
-    padding-top: 72px !important;
+    padding-top: 68px !important;
     min-height: 100vh;
+    width: 100% !important;
+    max-width: 100vw !important;
+    box-sizing: border-box;
   }
   /* Coordinator uses coordinator-main instead of main-content */
   .coordinator-main {
     margin-left: 0 !important;
     padding: 16px !important;
-    padding-top: 72px !important;
+    padding-top: 68px !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    box-sizing: border-box;
   }
 
   /* Grids stack vertically */
