@@ -265,7 +265,13 @@
 /* --- Mobile (≤768px): off-canvas sidebar --- */
 @media (max-width: 768px) {
   .mobile-menu-btn { display: flex; }
-  .sidebar { transform: translateX(-100%); width: 260px !important; transition: transform 0.3s ease; }
+  .sidebar {
+    transform: translateX(-100%);
+    width: 280px !important;
+    transition: transform 0.3s ease;
+    padding-top: 70px; /* space below hamburger button */
+    z-index: 101;
+  }
   .sidebar.sidebar-open { transform: translateX(0); }
   .sidebar.sidebar-open .sidebar-brand-text,
   .sidebar.sidebar-open .sidebar-user-info,
@@ -274,9 +280,9 @@
   .sidebar.sidebar-open .sidebar-zone-badge,
   .sidebar.sidebar-open .sidebar-notif-pill { display: revert; }
   .sidebar.sidebar-open .sidebar-user { justify-content: flex-start; padding: 12px; }
-  .sidebar.sidebar-open .sidebar-brand { justify-content: flex-start; }
-  .sidebar.sidebar-open .sidebar-nav-item { justify-content: flex-start; padding: 10px 12px; }
-  .sidebar-overlay { display: block; }
+  .sidebar.sidebar-open .sidebar-brand { justify-content: flex-start; padding: 12px 12px 16px; }
+  .sidebar.sidebar-open .sidebar-nav-item { justify-content: flex-start; padding: 12px 14px; }
+  .sidebar-overlay { display: block; z-index: 100; }
   .desktop-only { display: none; }
 }
 
