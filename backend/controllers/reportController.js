@@ -122,7 +122,10 @@ exports.analyzePhoto = async (req, res) => {
  * Submit a new garbage report with full AI analysis
  */
 exports.submitReport = async (req, res) => {
-  const { latitude, longitude, gps_accuracy, location, waste_type, description, priority, zone_id } = req.body;
+  const { 
+    latitude, longitude, gps_accuracy, location, waste_type, description, priority, zone_id,
+    state, district, city_municipality, ward_number, pincode, formatted_address
+  } = req.body;
 
   if (!latitude || !longitude) {
     if (req.file && fs.existsSync(req.file.path)) {
@@ -193,13 +196,14 @@ exports.submitReport = async (req, res) => {
     const gpsZoneId = zoneService.getZoneId(parseFloat(latitude), parseFloat(longitude));
     const zoneStatus = await zoneService.checkZoneStatus(parseFloat(latitude), parseFloat(longitude));
 
-    // ── Insert Report ────────────────────────────────────────────────────────
+    // ── Insert Report with State/District/Ward hierarchy ────────────────────
     const reportResult = await dbClient.query(
       `INSERT INTO reports
         (user_id, zone_id, description, waste_type, priority, status,
          ai_severity, ai_priority, ai_description, location,
-         latitude, longitude, location_verified, gps_accuracy, gps_zone_id, zone_report_count)
-       VALUES ($1, $2, $3, $4, $5, 'reported', $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+         latitude, longitude, location_verified, gps_accuracy, gps_zone_id, zone_report_count,
+         state, district, city_municipality, ward_number, pincode, formatted_address)
+       VALUES ($1, $2, $3, $4, $5, 'reported', $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
        RETURNING id`,
       [
         userId,
@@ -216,7 +220,13 @@ exports.submitReport = async (req, res) => {
         true,
         gps_accuracy ? parseInt(gps_accuracy, 10) : null,
         gpsZoneId,
-        zoneStatus.reportCount + 1
+        zoneStatus.reportCount + 1,
+        state || 'Telangana',
+        district || 'Hyderabad',
+        city_municipality || 'Greater Hyderabad Municipal Corporation',
+        ward_number || null,
+        pincode || null,
+        formatted_address || location || null
       ]
     );
 
