@@ -61,6 +61,8 @@ const CameraCapture = ({ onPhotoCapture, onError }) => {
 
     canvas.toBlob((blob) => {
       const file = new File([blob], `waste-capture-${Date.now()}.jpg`, { type: 'image/jpeg' });
+      file.isLiveCameraCapture = true;
+      file.capturedAt = new Date().toISOString();
       const previewUrl = URL.createObjectURL(blob);
       setCapturedPhoto(file);
       setCapturedPreview(previewUrl);

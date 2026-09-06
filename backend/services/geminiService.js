@@ -107,14 +107,21 @@ IMPORTANT: If the image is a selfie, screenshot, person, pet, stock photo, or an
 };
 
 // ─────────────────────────────────────────
-// FUNCTION 2: Fake photo + duplicate check
+// FUNCTION 2: Fake photo, AI generation + duplicate check
 // ─────────────────────────────────────────
-const validateWastePhoto = async (imagePath, recentDescriptions = []) => {
+const validateWastePhoto = async (imagePath, recentDescriptions = [], serverExif = null) => {
   const genAI = getGeminiClient();
   
   if (!genAI) {
-    return { isValid: true, isFake: false, isDuplicate: false, 
-             reason: '', aiAvailable: false };
+    return { 
+      isValid: true, 
+      isFake: false, 
+      isAiGenerated: false,
+      isScreenPhoto: false,
+      isDuplicate: false, 
+      reason: '', 
+      aiAvailable: false 
+    };
   }
 
   try {
@@ -125,19 +132,33 @@ const validateWastePhoto = async (imagePath, recentDescriptions = []) => {
       ? `Recent reports in last 2 hours: ${recentDescriptions.slice(0, 5).join(' | ')}`
       : 'No recent reports to compare.';
 
-    const prompt = `Analyze this image for a campus waste reporting system. Monetary rewards are tied to these submissions, so you MUST BE EXTREMELY STRICT to prevent fraud and scams.
+    const exifContext = serverExif?.suspiciousSoftware
+      ? `WARNING: File metadata indicates potential software generation/editing tool: "${serverExif.suspiciousSoftware}".`
+      : '';
+
+    const prompt = `You are an expert fraud-detection and forensic computer vision system for an official municipal and campus waste management platform.
+Citizens receive monetary rewards/points for valid garbage reports, creating an incentive for fraudulent submissions.
+
+You MUST conduct a rigorous forensic audit of this image for three fraud vectors:
+1. AI GENERATION / SYNTHETIC IMAGES: Check for Midjourney, DALL-E, Stable Diffusion, or FLUX artifacts. Look for unnatural plastic sheen, impossible reflections, melted textures, warped background geometry, overly painterly trash, or physically impossible litter.
+2. SCREEN CAPTURE / PHOTO OF A MONITOR: Check if the photo is taken of a computer screen, tablet, or phone display. Look for optical moiré banding patterns, visible pixel grids, screen glare, display bezel edges, or chromatic aberration from monitor subpixels.
+3. NON-WASTE / STOCK / FAKE SUBMISSIONS: Check for clean rooms, selfies, pets, stock photos, random objects, or clean campus pathways with no actual discarded garbage/waste.
+
 ${recentContext}
+${exifContext}
 
 Respond in this exact JSON format only, no other text:
 {
-  "isWaste": true or false (does the image clearly and undeniably contain actual waste, garbage, or litter?),
-  "isFake": true or false (Set to TRUE if this is a selfie, a screenshot, a photo of a screen, stock photography, a random clean object, or anything suspicious that is not clearly discarded garbage),
-  "isDuplicate": true or false (does this look very similar to a recent report above?),
-  "severity": number 1-10 (1=small wrapper, 10=massive overflow),
-  "description": "one sentence describing exactly what waste is visible",
-  "reason": "If isFake or isDuplicate is true, provide a detailed reason why it was rejected. Otherwise empty string."
+  "isWaste": true or false (does the image clearly and undeniably show actual discarded garbage, litter, or waste needing municipal collection?),
+  "isFake": true or false (MUST BE TRUE if isAiGenerated=true, isScreenPhoto=true, or it is a selfie/screenshot/stock photo/clean area),
+  "isAiGenerated": true or false (does the image show generative AI diffusion or synthetic rendering characteristics?),
+  "isScreenPhoto": true or false (is this a photo taken of a digital screen or monitor displaying an image?),
+  "isDuplicate": true or false (does this look identical to one of the recent reports?),
+  "severity": number 1-10 (1=small wrapper, 10=massive illegal dumping / overflowing bin),
+  "description": "one sentence objectively describing the actual waste visible in the physical scene",
+  "reason": "If isFake, isAiGenerated, or isScreenPhoto is true, provide a clear, user-facing explanation of why the photo was flagged/rejected. Otherwise empty string."
 }
-IMPORTANT: If the image does not unambiguously show discarded garbage or waste meant to be cleaned up on a campus, set "isFake" to true and "isWaste" to false. Do not be lenient.`;
+Be strict and uncompromising. If in doubt about synthetic or screen artifacts, flag it.`;
 
     const text = await generateWithFallback(genAI, [
       prompt,
@@ -146,11 +167,24 @@ IMPORTANT: If the image does not unambiguously show discarded garbage or waste m
     const clean = text.replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(clean);
 
-    return { ...parsed, aiAvailable: true };
+    return { 
+      ...parsed, 
+      isFake: Boolean(parsed.isFake || parsed.isAiGenerated || parsed.isScreenPhoto || !parsed.isWaste),
+      aiAvailable: true 
+    };
   } catch (err) {
     console.error('Gemini validatePhoto error:', err.message);
-    return { isValid: true, isFake: false, isDuplicate: false,
-             severity: 5, description: '', reason: '', aiAvailable: false };
+    return { 
+      isValid: true, 
+      isFake: false, 
+      isAiGenerated: false,
+      isScreenPhoto: false,
+      isDuplicate: false,
+      severity: 5, 
+      description: '', 
+      reason: '', 
+      aiAvailable: false 
+    };
   }
 };
 

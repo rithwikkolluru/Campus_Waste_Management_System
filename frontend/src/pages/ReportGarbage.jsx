@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
-import { Upload, MapPin, X, Camera, FileText, Send, ArrowLeft, Star, Sparkles, AlertTriangle, CheckCircle, Image as ImageIcon } from 'lucide-react';
+import { Upload, MapPin, X, Camera, FileText, Send, ArrowLeft, Star, Sparkles, AlertTriangle, CheckCircle, Image as ImageIcon, Shield, ShieldCheck, ShieldAlert } from 'lucide-react';
 import { validateImageFile, validateReportForm } from '../utils/validation';
 import usePoints from '../hooks/usePoints';
 import { API_BASE_URL } from '../config';
 import { analyzeImageLocal, loadYoloModel } from '../utils/yoloClassifier';
 import { reverseGeocode } from '../utils/geoCoder';
+import { inspectImageAuthenticity } from '../utils/exifInspector';
 import { STATES_AND_DISTRICTS, MUNICIPAL_CORPORATIONS, DEFAULT_WARDS } from '../data/administrativeData';
 import './Dashboard.css';
 import CameraCapture from '../components/CameraCapture';
@@ -86,6 +87,7 @@ export default function ReportGarbage() {
   const [aiAnalyzing, setAiAnalyzing]   = useState(false);  // spinner while pre-analyzing
   const [aiSuggestion, setAiSuggestion] = useState(null);   // result of analyze-photo
   const [userOverride, setUserOverride] = useState(false);  // true if user manually changed type
+  const [authenticity, setAuthenticity] = useState(null);   // result of EXIF / anti-fraud inspection
 
   // Location/GPS & State Hierarchy states
   const [locationVerified, setLocationVerified] = useState(false);
@@ -172,9 +174,26 @@ export default function ReportGarbage() {
     reader.onload = (e) => setPreview(e.target.result);
     reader.readAsDataURL(file);
 
-    // Reset AI state
+    // Reset AI & Authenticity states
     setAiSuggestion(null);
     setUserOverride(false);
+    setAuthenticity(null);
+
+    // Run client-side EXIF inspection immediately
+    try {
+      const authReport = await inspectImageAuthenticity(file, Boolean(file.isLiveCameraCapture));
+      setAuthenticity(authReport);
+      if (!authReport.isAuthentic) {
+        notify({
+          type: 'warning',
+          title: 'Authenticity Alert',
+          message: authReport.badgeDesc || 'Potential synthetic or edited image detected.',
+          duration: 6000
+        });
+      }
+    } catch (err) {
+      console.warn('Authenticity check skipped:', err);
+    }
 
     // Call analyze-photo endpoint for instant classification
     setAiAnalyzing(true);
@@ -192,6 +211,17 @@ export default function ReportGarbage() {
       }
       if (data.success && data.aiResult?.aiAvailable) {
         setAiSuggestion(data.aiResult);
+
+        // Check if AI detected fake/AI generated photo
+        if (data.aiResult.isFake || data.aiResult.isAiGenerated || data.aiResult.isScreenPhoto) {
+          notify({
+            type: 'error',
+            title: data.aiResult.isAiGenerated ? 'AI-Generated Image Detected' : 'Invalid Waste Photo',
+            message: data.aiResult.fakeReason || 'Image appears to be synthetic, a screenshot, or not actual garbage.',
+            duration: 7000
+          });
+        }
+
         if (!wasteType || !userOverride) {
           const matched = WASTE_TYPES.find(w =>
             w.toLowerCase() === (data.aiResult.wasteType || '').toLowerCase()
@@ -490,6 +520,45 @@ export default function ReportGarbage() {
                             {aiSuggestion.reason}
                           </div>
                         )}
+                      </div>
+                    )}
+
+                    {/* Photo Authenticity & Anti-Fraud Badge */}
+                    {authenticity && (
+                      <div className="glass-card" style={{
+                        marginTop: '12px',
+                        padding: '12px 14px',
+                        borderRadius: '10px',
+                        background: authenticity.riskLevel === 'HIGH' 
+                          ? 'rgba(239, 68, 68, 0.08)' 
+                          : authenticity.riskLevel === 'MODERATE'
+                          ? 'rgba(245, 158, 11, 0.08)'
+                          : 'rgba(16, 185, 129, 0.08)',
+                        border: `1px solid ${
+                          authenticity.riskLevel === 'HIGH'
+                            ? 'rgba(239, 68, 68, 0.3)'
+                            : authenticity.riskLevel === 'MODERATE'
+                            ? 'rgba(245, 158, 11, 0.25)'
+                            : 'rgba(16, 185, 129, 0.25)'
+                        }`
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                          {authenticity.riskLevel === 'HIGH' ? (
+                            <ShieldAlert size={16} color="#ef4444" />
+                          ) : (
+                            <ShieldCheck size={16} color={authenticity.riskLevel === 'MODERATE' ? '#f59e0b' : '#10b981'} />
+                          )}
+                          <span style={{
+                            fontWeight: 700,
+                            fontSize: '0.82rem',
+                            color: authenticity.riskLevel === 'HIGH' ? '#ef4444' : authenticity.riskLevel === 'MODERATE' ? '#f59e0b' : '#10b981'
+                          }}>
+                            {authenticity.badgeLabel}
+                          </span>
+                        </div>
+                        <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                          {authenticity.badgeDesc}
+                        </p>
                       </div>
                     )}
                   </div>

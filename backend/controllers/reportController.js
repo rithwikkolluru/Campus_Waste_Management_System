@@ -3,6 +3,7 @@ const pool = db.pool;
 const fs = require('fs');
 const { awardPoints } = require('./rewardsController');
 const { classifyWaste, validateWastePhoto, scoreSeverity } = require('../services/geminiService');
+const { inspectServerPhoto } = require('../utils/exifParser');
 const zoneService = require('../services/zoneService');
 const { notifyZoneActivity, createNotification } = require('../services/notificationService');
 
@@ -86,7 +87,11 @@ exports.analyzePhoto = async (req, res) => {
   }
 
   try {
-    const classification = await classifyWaste(req.file.path);
+    const [serverExif, classification, validation] = await Promise.all([
+      inspectServerPhoto(req.file.path),
+      classifyWaste(req.file.path),
+      validateWastePhoto(req.file.path, [], null)
+    ]);
 
     // Clean up temp file after reading
     if (fs.existsSync(req.file.path)) {
@@ -96,13 +101,21 @@ exports.analyzePhoto = async (req, res) => {
     return res.json({
       success: true,
       aiResult: {
-        wasteType:  classification.wasteType,
-        binColor:   classification.binColor,
-        binLabel:   classification.binLabel,
-        confidence: classification.confidence,
-        tips:       classification.tips,
-        isWaste:    classification.isWaste,
-        aiAvailable: classification.aiAvailable,
+        wasteType:     classification.wasteType,
+        binColor:      classification.binColor,
+        binLabel:      classification.binLabel,
+        confidence:    classification.confidence,
+        tips:          classification.tips,
+        isWaste:       classification.isWaste,
+        isFake:        validation.isFake,
+        isAiGenerated: validation.isAiGenerated,
+        isScreenPhoto: validation.isScreenPhoto,
+        fakeReason:    validation.reason || serverExif.reason,
+        aiAvailable:   classification.aiAvailable,
+        serverExif:    {
+          hasExif: serverExif.hasExif,
+          isSuspicious: serverExif.isSuspicious
+        }
       }
     });
   } catch (err) {
@@ -153,6 +166,9 @@ exports.submitReport = async (req, res) => {
     // ── AI Analysis (runs if photo is present) ──────────────────────────────
     if (req.file) {
       try {
+        // Inspect hardware and software EXIF markers
+        const serverExif = await inspectServerPhoto(req.file.path);
+
         // Fetch recent descriptions to detect duplicates
         const recentRes = await dbClient.query(
           `SELECT ai_description FROM reports
@@ -162,21 +178,31 @@ exports.submitReport = async (req, res) => {
         );
         const recentDescriptions = recentRes.rows.map(r => r.ai_description).filter(Boolean);
 
-        // Run all 3 AI checks in parallel
+        // Run all 3 AI checks in parallel with EXIF context
         const [classification, validation, severity] = await Promise.all([
           classifyWaste(req.file.path),
-          validateWastePhoto(req.file.path, recentDescriptions),
+          validateWastePhoto(req.file.path, recentDescriptions, serverExif),
           scoreSeverity(req.file.path),
         ]);
 
-        // Block fake / non-waste photos
+        // Block fake / AI-generated / screen photos / non-waste photos
         if (validation.isFake && validation.aiAvailable) {
           if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
           await dbClient.query('ROLLBACK');
+          
+          let userErrorMessage = 'Invalid photo. Please upload an authentic photo of discarded waste.';
+          if (validation.isAiGenerated) {
+            userErrorMessage = 'Submission rejected: Our anti-fraud system detected this image is AI-generated/synthetic.';
+          } else if (validation.isScreenPhoto) {
+            userErrorMessage = 'Submission rejected: Photos of screens or digital monitors are not permitted. Please take a direct photo of the garbage.';
+          }
+
           return res.status(400).json({
-            error: 'Invalid photo. Please upload an actual waste/garbage photo.',
-            reason: validation.reason,
+            error: userErrorMessage,
+            reason: validation.reason || serverExif.reason || 'Image failed authenticity verification.',
             isFake: true,
+            isAiGenerated: validation.isAiGenerated,
+            isScreenPhoto: validation.isScreenPhoto
           });
         }
 
