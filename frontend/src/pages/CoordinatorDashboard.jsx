@@ -7,11 +7,15 @@ import { API_BASE_URL } from '../config';
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import { 
   RefreshCw, Clock, CheckCircle, XCircle, Users, Package, Megaphone, 
-  BarChart3, AlertTriangle, Plus, Trash2, Send, Eye, Map, ClipboardList, TrendingUp
+  BarChart3, AlertTriangle, Plus, Trash2, Send, Eye, Map, ClipboardList, TrendingUp,
+  Navigation, Compass, Volume2, Globe
 } from 'lucide-react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './Dashboard.css';
+import VoiceAssistantButton from '../components/VoiceAssistantButton';
+import StaffNavigationModal from '../components/StaffNavigationModal';
+import { generateReportAnnouncement, generateBinAnnouncement } from '../utils/voiceAssistant';
 
 // Leaflet marker icons workaround for Vite/Webpack
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
@@ -99,6 +103,7 @@ export default function CoordinatorDashboard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [zones, setZones] = useState([]);
+  const [activeNavDestination, setActiveNavDestination] = useState(null); // { name, lat, lng, type }
 
   // Form states
   const [newAnnouncement, setNewAnnouncement] = useState({
