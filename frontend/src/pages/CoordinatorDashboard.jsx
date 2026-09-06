@@ -554,13 +554,22 @@ export default function CoordinatorDashboard() {
                 </span>
               </p>
             </div>
-            <button 
-              className="btn btn-primary flex items-center gap-2 coordinator-refresh-btn" 
-              onClick={fetchAllData}
-              disabled={loading}
-            >
-              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh Data
-            </button>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <VoiceAssistantButton
+                textEn={`Sanitary Inspector ${user?.name || ''}. You have ${reports.filter(r => r.status !== 'resolved').length} pending waste reports, and ${bins.filter(b => b.fill_level >= 80).length} bins requiring urgent collection.`}
+                textTe={`శానిటరీ ఇన్స్పెక్టర్ ${user?.name || ''} గారు. మీ వార్డులో ప్రస్తుతం ${reports.filter(r => r.status !== 'resolved').length} పెండింగ్ ఫిర్యాదులు మరియు ${bins.filter(b => b.fill_level >= 80).length} నిండిన డస్ట్‌బిన్లు ఉన్నాయి. దయచేసి సిబ్బందిని కేటాయించండి.`}
+                label="వాయిస్ బ్రీఫింగ్ (Audio Briefing)"
+                defaultLang="te"
+              />
+
+              <button 
+                className="btn btn-primary flex items-center gap-2 coordinator-refresh-btn" 
+                onClick={fetchAllData}
+                disabled={loading}
+              >
+                <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh Data
+              </button>
+            </div>
           </div>
         </div>
 
@@ -755,20 +764,58 @@ export default function CoordinatorDashboard() {
                         <span className={`badge ${getStatusColor(r.status)}`}>{r.status}</span>
                       </td>
                       <td>
-                        {r.status !== 'resolved' && (
-                          <select
-                            className="dispatch-select"
-                            value={r.status}
-                            onChange={(e) => handleUpdateStatus(r.id, e.target.value)}
-                            style={{ padding: '6px' }}
-                          >
-                            <option value="reported">Reported</option>
-                            <option value="under_review">Under Review</option>
-                            <option value="assigned">Assigned</option>
-                            <option value="in_progress">In Progress</option>
-                            <option value="resolved">Resolved</option>
-                          </select>
-                        )}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          {r.status !== 'resolved' && (
+                            <select
+                              className="dispatch-select"
+                              value={r.status}
+                              onChange={(e) => handleUpdateStatus(r.id, e.target.value)}
+                              style={{ padding: '6px' }}
+                            >
+                              <option value="reported">Reported</option>
+                              <option value="under_review">Under Review</option>
+                              <option value="assigned">Assigned</option>
+                              <option value="in_progress">In Progress</option>
+                              <option value="resolved">Resolved</option>
+                            </select>
+                          )}
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <VoiceAssistantButton
+                              textEn={generateReportAnnouncement(r, 'en')}
+                              textTe={generateReportAnnouncement(r, 'te')}
+                              label="వాయిస్"
+                              defaultLang="te"
+                            />
+
+                            {r.latitude && r.longitude && (
+                              <button
+                                type="button"
+                                onClick={() => setActiveNavDestination({
+                                  name: `Report #${r.id} (${r.waste_type} at ${r.ward_number || r.zone_name || 'Site'})`,
+                                  lat: r.latitude,
+                                  lng: r.longitude,
+                                  type: 'report'
+                                })}
+                                className="btn btn-sm flex items-center gap-1"
+                                style={{
+                                  background: 'rgba(59, 130, 246, 0.15)',
+                                  border: '1px solid rgba(59, 130, 246, 0.3)',
+                                  color: '#60a5fa',
+                                  fontSize: '0.72rem',
+                                  padding: '3px 8px',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  whiteSpace: 'nowrap'
+                                }}
+                                title="Staff live turn-by-turn route to waste location"
+                              >
+                                <Navigation size={12} />
+                                రూట్
+                              </button>
+                            )}
+                          </div>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -1103,8 +1150,52 @@ export default function CoordinatorDashboard() {
                         value={b.fill_level} 
                         onChange={(e) => handleUpdateBin(b.id, { fill_level: parseInt(e.target.value), status: parseInt(e.target.value) >= 90 ? 'full' : 'active' })} 
                         style={{ width: '70px', height: '4px', cursor: 'pointer' }} 
+                        title="Update fill level"
                       />
                     </div>
+                  </div>
+
+                  {/* Staff Actions: Voice Announcement & GPS Navigation */}
+                  <div style={{
+                    marginTop: '12px',
+                    paddingTop: '10px',
+                    borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '8px'
+                  }}>
+                    <VoiceAssistantButton
+                      textEn={generateBinAnnouncement(b, 'en')}
+                      textTe={generateBinAnnouncement(b, 'te')}
+                      label="ధ్వని (Voice)"
+                      defaultLang="te"
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() => setActiveNavDestination({
+                        name: `${b.location_desc || 'Bin #' + b.id} (${b.bin_type})`,
+                        lat: b.latitude || (17.4920 + (b.id * 0.001)),
+                        lng: b.longitude || (78.3910 + (b.id * 0.0008)),
+                        type: 'bin'
+                      })}
+                      className="btn btn-sm flex items-center gap-1"
+                      style={{
+                        background: 'rgba(59, 130, 246, 0.15)',
+                        border: '1px solid rgba(59, 130, 246, 0.3)',
+                        color: '#60a5fa',
+                        fontSize: '0.75rem',
+                        padding: '4px 10px',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontWeight: 600
+                      }}
+                      title="Staff-only live walking route to this bin"
+                    >
+                      <Navigation size={13} />
+                      రూట్ (Navigate)
+                    </button>
                   </div>
                 </div>
               ))}
@@ -1320,6 +1411,14 @@ export default function CoordinatorDashboard() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Staff Navigation Modal (Staff-Only Live Route Guidance) */}
+        {activeNavDestination && (
+          <StaffNavigationModal
+            destination={activeNavDestination}
+            onClose={() => setActiveNavDestination(null)}
+          />
         )}
 
       </main>
