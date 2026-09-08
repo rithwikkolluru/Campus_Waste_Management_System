@@ -1655,6 +1655,120 @@
   }
 }
 
+/* ============================================================
+   Citizen Dashboard Mobile Optimization (Senior Developer Fixes)
+   ============================================================ */
+
+@media (max-width: 768px) {
+  .citizen-achievement-card {
+    padding: 16px !important;
+  }
+
+  .citizen-achievement-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+
+  .citizen-achievement-actions {
+    width: 100% !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  .citizen-achievement-actions .btn {
+    flex: 1 !important;
+    justify-content: center !important;
+    font-size: 0.78rem !important;
+    padding: 6px 10px !important;
+  }
+
+  .citizen-goals-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .citizen-goal-card {
+    padding: 14px !important;
+  }
+
+  .citizen-ward-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  .citizen-tracker-item {
+    padding: 10px 12px !important;
+  }
+
+  .citizen-table-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+
+  .citizen-search-controls {
+    width: 100% !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  .citizen-search-controls .search-wrap {
+    flex: 1 1 180px !important;
+    width: 100% !important;
+  }
+
+  .citizen-search-controls .search-input {
+    width: 100% !important;
+  }
+
+  .citizen-search-controls select {
+    flex: 1 1 120px !important;
+    width: auto !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .citizen-ward-grid {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+
+  .citizen-tracker-item {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+  }
+
+  .citizen-achievement-card {
+    padding: 14px 10px !important;
+  }
+
+  /* Keep status workflow readable without overlapping horizontal lines */
+  .status-step {
+    flex: 1;
+    min-width: 44px;
+    text-align: center;
+  }
+
+  .status-step span {
+    font-size: 0.58rem !important;
+    max-width: 46px !important;
+    display: block;
+    margin: 0 auto;
+  }
+
+  .status-step .dot {
+    width: 26px !important;
+    height: 26px !important;
+    font-size: 0.75rem !important;
+    margin: 0 auto 6px !important;
+  }
+}
+
 /* Voice Assistant Audio Pulse Keyframes */
 @keyframes voice-pulse {
   0% { transform: scaleY(0.4); opacity: 0.7; }
