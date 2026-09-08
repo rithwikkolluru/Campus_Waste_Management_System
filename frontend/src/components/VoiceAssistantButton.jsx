@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Volume2, VolumeX, Globe } from 'lucide-react';
+import { Volume2, Square, Globe } from 'lucide-react';
 import { speakText, stopSpeaking } from '../utils/voiceAssistant';
 
 export default function VoiceAssistantButton({ 
@@ -37,19 +37,20 @@ export default function VoiceAssistantButton({
     );
   };
 
-  const handleToggleLang = (e) => {
+  const handleSelectLang = (e, lang) => {
     e.stopPropagation();
+    if (currentLang === lang && isPlaying) return;
+
     stopSpeaking();
     setIsPlaying(false);
-    const nextLang = currentLang === 'te' ? 'en' : 'te';
-    setCurrentLang(nextLang);
+    setCurrentLang(lang);
 
-    // Automatically speak the new language when user switches
-    const textToSpeak = nextLang === 'te' ? (textTe || textEn) : (textEn || textTe);
+    // Automatically speak in the selected language
+    const textToSpeak = lang === 'te' ? (textTe || textEn) : (textEn || textTe);
     if (textToSpeak) {
       speakText(
         textToSpeak,
-        nextLang,
+        lang,
         () => setIsPlaying(true),
         () => setIsPlaying(false)
       );
@@ -62,76 +63,121 @@ export default function VoiceAssistantButton({
       style={{
         display: 'inline-flex',
         alignItems: 'center',
-        background: isPlaying ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255, 255, 255, 0.06)',
-        border: `1px solid ${isPlaying ? '#3b82f6' : 'rgba(255, 255, 255, 0.12)'}`,
-        borderRadius: '20px',
-        padding: '2px 8px 2px 6px',
-        gap: '6px',
-        fontSize: '0.75rem',
-        cursor: 'pointer',
-        transition: 'all 0.2s ease',
-        userSelect: 'none'
+        background: isPlaying ? 'rgba(16, 185, 129, 0.12)' : 'rgba(15, 23, 42, 0.75)',
+        border: `1.5px solid ${isPlaying ? 'var(--accent-green, #10b981)' : 'rgba(255, 255, 255, 0.14)'}`,
+        borderRadius: '24px',
+        padding: '3px 4px 3px 10px',
+        gap: '8px',
+        fontSize: '0.78rem',
+        boxShadow: isPlaying ? '0 0 16px rgba(16, 185, 129, 0.35)' : '0 2px 6px rgba(0,0,0,0.25)',
+        transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+        userSelect: 'none',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)'
       }}
-      title="Tap to listen to this task hands-free"
+      title="Bilingual Voice Assistant (తెలుగు / English)"
     >
-      {/* Voice Play/Stop Button */}
+      {/* Voice Play / Stop Trigger */}
       <button
         type="button"
         onClick={handleTogglePlay}
+        aria-label={isPlaying ? "Stop voice guidance" : "Listen in selected language"}
         style={{
           background: 'none',
           border: 'none',
-          color: isPlaying ? '#60a5fa' : 'var(--text-primary)',
+          color: isPlaying ? '#34d399' : 'var(--text-primary, #f0fdf4)',
           display: 'flex',
           alignItems: 'center',
-          gap: '4px',
+          gap: '6px',
           cursor: 'pointer',
-          padding: 0
+          padding: '3px 0',
+          fontWeight: 600,
+          fontSize: '0.78rem'
         }}
       >
         {isPlaying ? (
           <>
-            <VolumeX size={14} color="#60a5fa" />
-            <span style={{ color: '#60a5fa', fontWeight: 600 }}>ఆపండి (Stop)</span>
-            <span className="speaking-wave" style={{
-              display: 'inline-block',
-              width: '6px',
-              height: '6px',
-              borderRadius: '50%',
-              backgroundColor: '#60a5fa',
-              animation: 'pulse 1s infinite'
-            }} />
+            <Square size={13} fill="#ef4444" color="#ef4444" />
+            <span style={{ color: '#f87171', fontWeight: 700 }}>
+              {currentLang === 'te' ? 'ఆపండి (Stop)' : 'Stop'}
+            </span>
+            <span style={{
+              display: 'inline-flex',
+              gap: '2px',
+              alignItems: 'center',
+              marginLeft: '2px'
+            }}>
+              <span style={{ width: '3px', height: '10px', background: '#34d399', borderRadius: '2px', animation: 'voice-pulse 0.6s infinite alternate' }} />
+              <span style={{ width: '3px', height: '16px', background: '#34d399', borderRadius: '2px', animation: 'voice-pulse 0.8s 0.2s infinite alternate' }} />
+              <span style={{ width: '3px', height: '8px', background: '#34d399', borderRadius: '2px', animation: 'voice-pulse 0.5s 0.1s infinite alternate' }} />
+            </span>
           </>
         ) : (
           <>
-            <Volume2 size={14} color="#10b981" />
-            <span style={{ color: 'var(--text-secondary)' }}>{label}</span>
+            <Volume2 size={15} color="#10b981" />
+            <span style={{ color: 'var(--text-primary, #f0fdf4)' }}>{label}</span>
           </>
         )}
       </button>
 
-      {/* Language Switcher Pill */}
-      <button
-        type="button"
-        onClick={handleToggleLang}
+      {/* Language Switcher Segmented Control */}
+      <div 
         style={{
-          background: 'rgba(255,255,255,0.1)',
-          border: 'none',
-          borderRadius: '10px',
-          padding: '1px 6px',
-          color: '#fbbf24',
-          fontSize: '0.68rem',
-          fontWeight: 700,
-          cursor: 'pointer',
-          display: 'flex',
+          display: 'inline-flex',
           alignItems: 'center',
+          background: 'rgba(0, 0, 0, 0.45)',
+          borderRadius: '16px',
+          padding: '2px',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
           gap: '2px'
         }}
-        title="Switch between Telugu and English voice"
       >
-        <Globe size={10} />
-        {currentLang === 'te' ? 'తెలుగు' : 'EN'}
-      </button>
+        {/* Telugu Option */}
+        <button
+          type="button"
+          onClick={(e) => handleSelectLang(e, 'te')}
+          title="Switch voice to Telugu (తెలుగు)"
+          style={{
+            background: currentLang === 'te' 
+              ? 'linear-gradient(135deg, #10b981, #059669)' 
+              : 'transparent',
+            color: currentLang === 'te' ? '#ffffff' : 'rgba(240, 253, 244, 0.65)',
+            border: 'none',
+            borderRadius: '12px',
+            padding: '2px 8px',
+            fontSize: '0.72rem',
+            fontWeight: currentLang === 'te' ? 700 : 500,
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            boxShadow: currentLang === 'te' ? '0 1px 4px rgba(0,0,0,0.3)' : 'none'
+          }}
+        >
+          తెలుగు
+        </button>
+
+        {/* English Option */}
+        <button
+          type="button"
+          onClick={(e) => handleSelectLang(e, 'en')}
+          title="Switch voice to English"
+          style={{
+            background: currentLang === 'en' 
+              ? 'linear-gradient(135deg, #3b82f6, #2563eb)' 
+              : 'transparent',
+            color: currentLang === 'en' ? '#ffffff' : 'rgba(240, 253, 244, 0.65)',
+            border: 'none',
+            borderRadius: '12px',
+            padding: '2px 8px',
+            fontSize: '0.72rem',
+            fontWeight: currentLang === 'en' ? 700 : 500,
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            boxShadow: currentLang === 'en' ? '0 1px 4px rgba(0,0,0,0.3)' : 'none'
+          }}
+        >
+          EN
+        </button>
+      </div>
     </div>
   );
 }
