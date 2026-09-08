@@ -165,17 +165,17 @@ export default function StudentDashboard() {
         ) : (
           <>
             {/* Gamification Stats */}
-            <div className="glass-card mb-6" style={{ padding: '24px', background: 'linear-gradient(145deg, rgba(16,185,129,0.1), rgba(16,185,129,0.02))', border: '1px solid rgba(16,185,129,0.2)' }}>
-           <div className="flex justify-between items-center mb-4">
+            <div className="glass-card mb-6 citizen-achievement-card" style={{ padding: '24px', background: 'linear-gradient(145deg, rgba(16,185,129,0.1), rgba(16,185,129,0.02))', border: '1px solid rgba(16,185,129,0.2)' }}>
+           <div className="citizen-achievement-header flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold flex items-center gap-2"><Award className="text-accent" /> Achievement Dashboard</h3>
-              <div className="flex items-center gap-3">
+              <div className="citizen-achievement-actions flex items-center gap-3">
                 <span className="badge badge-primary">Total Points: {points.total_points}</span>
                 <button className="btn btn-outline btn-sm" onClick={() => navigate('/achievements')}>View Rewards & Badges <ChevronRight size={14}/></button>
               </div>
            </div>
-           <div className="grid-2 gap-4">
+           <div className="grid-2 gap-4 citizen-goals-grid">
               {/* Daily Progress */}
-              <div className="glass-card" style={{ padding: '16px', border: '1px solid rgba(59,130,246,0.3)' }}>
+              <div className="glass-card citizen-goal-card" style={{ padding: '16px', border: '1px solid rgba(59,130,246,0.3)' }}>
                  <div className="flex justify-between mb-2">
                     <span className="font-semibold flex items-center gap-2 text-sm"><Target size={14} className="text-blue" /> Daily Goal</span>
                     <span className="text-sm font-bold text-blue">{points.daily_earned} / {points.daily_limit} pts</span>
@@ -187,7 +187,7 @@ export default function StudentDashboard() {
               </div>
 
               {/* Monthly Progress */}
-              <div className="glass-card" style={{ padding: '16px', border: '1px solid rgba(139,92,246,0.3)' }}>
+              <div className="glass-card citizen-goal-card" style={{ padding: '16px', border: '1px solid rgba(139,92,246,0.3)' }}>
                  <div className="flex justify-between mb-2">
                     <span className="font-semibold flex items-center gap-2 text-sm"><Star size={14} className="text-purple" /> Monthly Goal</span>
                     <span className="text-sm font-bold text-purple">{points.monthly_earned} / {points.monthly_limit} pts</span>
@@ -200,20 +200,20 @@ export default function StudentDashboard() {
            </div>
 
            {/* Civic Ward Performance Tracker */}
-           <div className="grid-4 gap-3 mt-4">
-             <div className="glass-card" style={{ padding: '12px 16px', background: 'rgba(15,23,42,0.6)', border: '1px solid var(--glass-border)' }}>
+           <div className="citizen-ward-grid grid-4 gap-3 mt-4">
+             <div className="glass-card citizen-tracker-item" style={{ padding: '12px 16px', background: 'rgba(15,23,42,0.6)', border: '1px solid var(--glass-border)' }}>
                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>📍 Assigned District</div>
                <div style={{ fontSize: '1rem', fontWeight: 700, color: '#38bdf8' }}>{user?.district || 'Hyderabad'}</div>
              </div>
-             <div className="glass-card" style={{ padding: '12px 16px', background: 'rgba(15,23,42,0.6)', border: '1px solid var(--glass-border)' }}>
+             <div className="glass-card citizen-tracker-item" style={{ padding: '12px 16px', background: 'rgba(15,23,42,0.6)', border: '1px solid var(--glass-border)' }}>
                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>✅ My Resolved Reports</div>
                <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--accent-green)' }}>{myReports.filter(r => r.status === 'Resolved').length} Resolved</div>
              </div>
-             <div className="glass-card" style={{ padding: '12px 16px', background: 'rgba(15,23,42,0.6)', border: '1px solid var(--glass-border)' }}>
+             <div className="glass-card citizen-tracker-item" style={{ padding: '12px 16px', background: 'rgba(15,23,42,0.6)', border: '1px solid var(--glass-border)' }}>
                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>⏱️ Active Incidents</div>
                <div style={{ fontSize: '1rem', fontWeight: 700, color: '#f59e0b' }}>{myReports.filter(r => r.status !== 'Resolved').length} In Progress</div>
              </div>
-             <div className="glass-card" style={{ padding: '12px 16px', background: 'rgba(15,23,42,0.6)', border: '1px solid var(--glass-border)' }}>
+             <div className="glass-card citizen-tracker-item" style={{ padding: '12px 16px', background: 'rgba(15,23,42,0.6)', border: '1px solid var(--glass-border)' }}>
                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>🏆 Ward Cleanliness Score</div>
                <div style={{ fontSize: '1rem', fontWeight: 700, color: '#a78bfa' }}>96.4% Clean</div>
              </div>
@@ -334,9 +334,9 @@ export default function StudentDashboard() {
 
         {/* Complaint history */}
         <div className="glass-card" style={{ padding: '24px' }}>
-          <div className="flex justify-between items-center mb-4">
+          <div className="citizen-table-header flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold">My Uploads</h3>
-            <div className="flex gap-3 items-center">
+            <div className="citizen-search-controls flex gap-3 items-center">
               <div className="search-wrap">
                 <Search size={14} className="search-icon" />
                 <input
