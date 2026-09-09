@@ -37,9 +37,15 @@ router.get('/maps/reports', authenticate, async (req, res) => {
         r.description,
         r.location,
         r.created_at,
+        r.image_url,
         COALESCE(r.ai_severity, 5) as severity,
         COALESCE(r.ai_priority, 'Medium') as priority,
+        u.name as citizen_name,
         u.name as student_name,
+        COALESCE(
+          (SELECT rp.file_url FROM report_photos rp WHERE rp.report_id = r.id ORDER BY rp.id ASC LIMIT 1),
+          r.image_url
+        ) as photo_url,
         COALESCE(
           json_agg(
             json_build_object('url', rp.file_url)
@@ -68,8 +74,10 @@ router.get('/maps/reports', authenticate, async (req, res) => {
         priority: r.priority,
         description: r.description,
         location: r.location,
+        citizenName: r.citizen_name || r.student_name,
+        reporterName: r.citizen_name || r.student_name,
         studentName: r.student_name,
-        photo: r.photos?.[0]?.url || null,
+        photo: r.photo_url || r.photos?.[0]?.url || null,
         createdAt: r.created_at,
         pinColor:
           uiStatus === 'resolved'   ? 'green'  :
@@ -173,7 +181,7 @@ router.get('/maps/history', authenticate, async (req, res) => {
         COALESCE(
           (SELECT file_url FROM report_photos
            WHERE report_id = r.id LIMIT 1),
-          NULL
+          r.image_url
         ) as photo
       FROM reports r
       ${where}

@@ -525,8 +525,23 @@ ul, ol { list-style: none; }
   flex: 1;
   margin-left: var(--sidebar-width);
   min-height: 100vh;
+  min-width: 0;
   padding: 30px;
   background: var(--gradient-hero);
+}
+
+/* ===================== RESPONSIVE TABLE WRAPPER ===================== */
+.table-scroll-wrapper {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+.table-scroll-wrapper .data-table {
+  min-width: 600px;
+  width: 100%;
 }
 .page-header {
   margin-bottom: 30px;

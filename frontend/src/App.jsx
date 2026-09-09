@@ -31,23 +31,26 @@ function App() {
             <Route path="/login"    element={<LoginPage />} />
             <Route path="/register" element={<Navigate to="/login" replace />} />
 
-            <Route path="/student" element={
-              <PrivateRoute roles={['student']}>
+            <Route path="/citizen" element={
+              <PrivateRoute roles={['citizen', 'student']}>
                 <StudentDashboard />
               </PrivateRoute>
             } />
+            <Route path="/student" element={
+              <Navigate to="/citizen" replace />
+            } />
             <Route path="/report" element={
-              <PrivateRoute roles={['student']}>
+              <PrivateRoute roles={['citizen', 'student']}>
                 <ReportGarbage />
               </PrivateRoute>
             } />
             <Route path="/achievements" element={
-              <PrivateRoute roles={['student']}>
+              <PrivateRoute roles={['citizen', 'student']}>
                 <AchievementsPage />
               </PrivateRoute>
             } />
             <Route path="/leaderboard" element={
-              <PrivateRoute roles={['student', 'coordinator']}>
+              <PrivateRoute roles={['citizen', 'student', 'coordinator']}>
                 <LeaderboardPage />
               </PrivateRoute>
             } />
@@ -63,14 +66,14 @@ function App() {
             } />
             {/* Notifications – accessible to all logged-in roles */}
             <Route path="/notifications" element={
-              <PrivateRoute roles={['student', 'coordinator', 'admin']}>
+              <PrivateRoute roles={['citizen', 'student', 'coordinator', 'admin']}>
                 <NotificationsPage />
               </PrivateRoute>
             } />
 
-            {/* Campus Map – accessible to all logged-in roles */}
+            {/* Campus/Civic Map – accessible to all logged-in roles */}
             <Route path="/map" element={
-              <PrivateRoute roles={['student', 'coordinator', 'admin']}>
+              <PrivateRoute roles={['citizen', 'student', 'coordinator', 'admin']}>
                 <CampusMapPage />
               </PrivateRoute>
             } />

@@ -9,15 +9,18 @@ import {
 } from 'lucide-react';
 import './Sidebar.css';
 
+const CITIZEN_NAV = [
+  { icon: LayoutDashboard, label: 'Dashboard',      path: '/citizen',        notifKey: false },
+  { icon: AlertTriangle,   label: 'Report Issue',   path: '/report',         notifKey: false },
+  { icon: Trophy,          label: 'Achievements',   path: '/achievements',   notifKey: false },
+  { icon: Award,           label: 'Leaderboard',    path: '/leaderboard',    notifKey: false },
+  { icon: Map,             label: 'Civic State Map', path: '/map',            notifKey: false },
+  { icon: Bell,            label: 'Notifications',  path: '/notifications',  notifKey: true  },
+];
+
 const NAV_ITEMS = {
-  student: [
-    { icon: LayoutDashboard, label: 'Dashboard',      path: '/student',        notifKey: false },
-    { icon: AlertTriangle,   label: 'Report Issue',   path: '/report',         notifKey: false },
-    { icon: Trophy,          label: 'Achievements',   path: '/achievements',   notifKey: false },
-    { icon: Award,           label: 'Leaderboard',    path: '/leaderboard',    notifKey: false },
-    { icon: Map,             label: 'Civic State Map', path: '/map',            notifKey: false },
-    { icon: Bell,            label: 'Notifications',  path: '/notifications',  notifKey: true  },
-  ],
+  citizen: CITIZEN_NAV,
+  student: CITIZEN_NAV,
   coordinator: [
     { icon: LayoutDashboard, label: 'Dashboard',     path: '/coordinator',                  notifKey: false },
     { icon: ClipboardList,   label: 'Reports',        path: '/coordinator?tab=reports',       notifKey: false },
@@ -36,8 +39,8 @@ const NAV_ITEMS = {
   ],
 };
 
-const ROLE_COLORS = { student: '#34d399', coordinator: '#60a5fa', admin: '#a78bfa' };
-const ROLE_LABELS = { student: 'Civic Citizen', coordinator: 'Ward Inspector', admin: 'Urban Directorate' };
+const ROLE_COLORS = { citizen: '#34d399', student: '#34d399', coordinator: '#60a5fa', admin: '#a78bfa' };
+const ROLE_LABELS = { citizen: 'Civic Citizen', student: 'Civic Citizen', coordinator: 'Ward Inspector', admin: 'Urban Directorate' };
 
 export default function Sidebar() {
   const { user, logout }     = useAuth();

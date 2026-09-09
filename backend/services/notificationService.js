@@ -32,8 +32,8 @@ const notifyZoneActivity = async (zoneId, reportCount) => {
       await createNotification(
         r.user_id,
         'zone_busy',
-        'Area Getting Crowded 📍',
-        `${reportCount} students have now reported the same area you flagged. Staff has been notified!`,
+        'Civic Area High Activity 📍',
+        `${reportCount} citizens have now reported issues in this sector. Municipal sanitation fleet has been notified!`,
         { zoneId, reportCount }
       );
     }
@@ -42,16 +42,16 @@ const notifyZoneActivity = async (zoneId, reportCount) => {
   }
 };
 
-// Notify student when their report status changes
+// Notify citizen when their report status changes
 const notifyReportStatus = async (userId, reportId, newStatus, location, client = pool) => {
   const messages = {
     in_progress: {
-      title: 'Report In Progress 🔧',
-      message: `Staff is now working on cleaning "${location}". Thank you for reporting!`,
+      title: 'Action In Progress 🔧',
+      message: `Municipal sanitation team is now actively resolving "${location}". Thank you for your civic vigilance!`,
     },
     resolved: {
-      title: 'Area Cleaned! ✅',
-      message: `"${location}" has been cleaned. Your report made a difference! +15 bonus points awarded.`,
+      title: 'Civic Issue Resolved! ✅',
+      message: `"${location}" has been verified and cleared. Your report made a difference! +15 points awarded towards municipal tax rebates.`,
     },
   };
 
@@ -68,27 +68,27 @@ const notifyReportStatus = async (userId, reportId, newStatus, location, client 
   );
 };
 
-// Notify student with a custom status_update message (verification flow)
+// Notify citizen with a custom status_update message (verification flow)
 const notifyStatusUpdate = async (userId, reportId, message, client = pool) => {
   await createNotification(
     userId,
     'status_update',
-    `Report #${reportId} Update`,
+    `Civic Report #${reportId} Update`,
     message,
     { reportId },
     client
   );
 };
 
-// Broadcast announcement notifications to students in zone + admin
+// Broadcast announcement notifications to citizens in zone + admin
 const notifyAnnouncement = async (zoneId, title, message, client = pool) => {
   try {
     let recipientIds = [];
     const parsedZoneId = zoneId === 'all' || zoneId == null ? null : parseInt(zoneId, 10);
 
     if (!parsedZoneId || Number.isNaN(parsedZoneId)) {
-      const students = await client.query(`SELECT id FROM users WHERE role = 'student'`);
-      recipientIds = students.rows.map(r => r.id);
+      const citizens = await client.query(`SELECT id FROM users WHERE role IN ('citizen', 'student')`);
+      recipientIds = citizens.rows.map(r => r.id);
     } else {
       // zone_reporters.zone_id is VARCHAR (GPS grid); reports.zone_id is INTEGER — query reports only
       const zoneUsers = await client.query(
@@ -97,8 +97,8 @@ const notifyAnnouncement = async (zoneId, title, message, client = pool) => {
       );
       recipientIds = zoneUsers.rows.map(r => r.user_id);
 
-      const allStudents = await client.query(`SELECT id FROM users WHERE role = 'student'`);
-      recipientIds = [...new Set([...recipientIds, ...allStudents.rows.map(r => r.id)])];
+      const allCitizens = await client.query(`SELECT id FROM users WHERE role IN ('citizen', 'student')`);
+      recipientIds = [...new Set([...recipientIds, ...allCitizens.rows.map(r => r.id)])];
     }
 
     await createBulkNotifications(
@@ -124,13 +124,13 @@ const notifyAnnouncement = async (zoneId, title, message, client = pool) => {
   }
 };
 
-// Notify student they hit daily points limit
+// Notify citizen they hit daily points limit
 const notifyDailyLimit = async (userId) => {
   await createNotification(
     userId,
     'daily_limit',
-    'Daily Limit Reached 🏆',
-    `You've earned the maximum 50 points today! Come back tomorrow for more points. You can still submit reports to help campus!`,
+    'Daily Points Limit Reached 🏆',
+    `You've reached your daily municipal rebate points limit! You can still submit reports to help keep your ward clean.`,
     {}
   );
 };

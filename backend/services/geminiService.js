@@ -241,21 +241,22 @@ const generateWeeklyReport = async (reportData) => {
   }
 
   try {
-    const prompt = `You are analyzing waste management data for a college campus.
-Here is this week's waste report data:
+    const prompt = `You are an AI civic intelligence analyst evaluating municipal waste management and sanitation compliance data across Telangana districts, urban local bodies (ULBs), and wards.
+Here is this week's civic waste report data:
 ${JSON.stringify(reportData, null, 2)}
 
 Generate a weekly analysis in this exact JSON format only, no other text:
 {
-  "summary": "2-3 sentence overall summary",
+  "summary": "2-3 sentence overall summary of statewide cleanliness and municipal compliance",
   "topProblematicAreas": ["area1", "area2", "area3"],
   "mostCommonWasteType": "waste type name",
   "totalReportsThisWeek": number,
   "resolvedPercentage": number,
   "trend": "one of: Improving, Worsening, Stable",
   "recommendations": ["recommendation1", "recommendation2", "recommendation3"],
-  "studentEngagement": "one sentence about student participation",
-  "urgentAreas": ["areas needing immediate attention"]
+  "citizenEngagement": "one sentence about citizen civic participation",
+  "studentEngagement": "one sentence about citizen participation",
+  "urgentAreas": ["wards needing immediate sanitation dispatch"]
 }`;
 
     const text = await generateWithFallback(genAI, [prompt]);

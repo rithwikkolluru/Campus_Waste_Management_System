@@ -3,28 +3,30 @@ import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
-import { Upload, MapPin, X, Camera, FileText, Send, ArrowLeft, Star, Sparkles, AlertTriangle, CheckCircle, Image as ImageIcon, Shield, ShieldCheck, ShieldAlert } from 'lucide-react';
-import { validateImageFile, validateReportForm } from '../utils/validation';
+import {
+  Upload, MapPin, X, Camera, FileText, Send, ArrowLeft, Star,
+  Sparkles, AlertTriangle, CheckCircle, Image as ImageIcon,
+  Shield, ShieldCheck, ShieldAlert, Crosshair, Map, Navigation, Tag
+} from 'lucide-react';
+import { validateImageFile } from '../utils/validation';
 import usePoints from '../hooks/usePoints';
 import { API_BASE_URL } from '../config';
 import { analyzeImageLocal, loadYoloModel } from '../utils/yoloClassifier';
 import { reverseGeocode } from '../utils/geoCoder';
 import { inspectImageAuthenticity } from '../utils/exifInspector';
-import { STATES_AND_DISTRICTS, MUNICIPAL_CORPORATIONS, DEFAULT_WARDS } from '../data/administrativeData';
+import {
+  CIVIC_ISSUE_CATEGORIES,
+  TELANGANA_DISTRICTS,
+  MUNICIPAL_CORPORATIONS,
+  DISTRICT_MANDALS,
+  DEFAULT_WARDS,
+  TELANGANA_MUNICIPAL_ZONES
+} from '../data/administrativeData';
 import './Dashboard.css';
 import CameraCapture from '../components/CameraCapture';
 import LocationVerifier from '../components/LocationVerifier';
 import ZoneWarning from '../components/ZoneWarning';
-
-const ZONES = [
-  { id: 1, name: 'Hostel Area',    emoji: '🏠' },
-  { id: 2, name: 'Canteen',        emoji: '🍽️' },
-  { id: 3, name: 'Academic Block', emoji: '🏫' },
-  { id: 4, name: 'Library',        emoji: '📚' },
-  { id: 5, name: 'Sports Ground',  emoji: '⚽' },
-];
-
-const WASTE_TYPES = ['Organic', 'Plastic', 'Paper', 'Glass', 'E-Waste', 'Metal', 'Hazardous', 'Mixed', 'General Waste'];
+import SafeImage from '../components/SafeImage';
 
 const BIN_COLORS = {
   Blue:   { bg: '#2563eb22', border: '#2563eb60', dot: '#3b82f6', label: '🔵' },
@@ -46,7 +48,7 @@ const compressImage = (file) => new Promise((resolve) => {
   const canvas = document.createElement('canvas');
   const img    = new Image();
   img.onload = () => {
-    const maxWidth = 800;
+    const maxWidth = 1000;
     const ratio    = Math.min(maxWidth / img.width, 1);
     canvas.width   = img.width  * ratio;
     canvas.height  = img.height * ratio;
@@ -57,7 +59,7 @@ const compressImage = (file) => new Promise((resolve) => {
       } else {
         resolve(file);
       }
-    }, 'image/jpeg', 0.7);
+    }, 'image/jpeg', 0.75);
   };
   img.onerror = () => resolve(file);
   img.src = URL.createObjectURL(file);
@@ -71,78 +73,74 @@ export default function ReportGarbage() {
   const { refreshPoints } = usePoints(token);
   const { notify } = useNotifications();
 
-  // Form state
-  const [fileObj, setFileObj]     = useState(null);
-  const [preview, setPreview]     = useState(null);
-  const [zone, setZone]           = useState('');
-  const [wasteType, setWasteType] = useState('');
-  const [description, setDesc]    = useState('');
-  const [priority, setPriority]   = useState('Medium');
-  const [dragOver, setDragOver]   = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [success, setSuccess]       = useState(false);
+  // ── Form state ────────────────────────────────────────────────────────────
+  const [selectedCategory, setSelectedCategory] = useState(CIVIC_ISSUE_CATEGORIES[0]);
+  const [fileObj, setFileObj]         = useState(null);
+  const [preview, setPreview]         = useState(null);
+  const [description, setDesc]        = useState('');
+  const [priority, setPriority]       = useState('Medium');
+  const [dragOver, setDragOver]       = useState(false);
+  const [submitting, setSubmitting]   = useState(false);
+  const [success, setSuccess]         = useState(false);
   const [reportResult, setReportResult] = useState(null);
 
-  // AI state
-  const [aiAnalyzing, setAiAnalyzing]   = useState(false);  // spinner while pre-analyzing
-  const [aiSuggestion, setAiSuggestion] = useState(null);   // result of analyze-photo
-  const [userOverride, setUserOverride] = useState(false);  // true if user manually changed type
-  const [authenticity, setAuthenticity] = useState(null);   // result of EXIF / anti-fraud inspection
+  // ── AI state ──────────────────────────────────────────────────────────────
+  const [aiAnalyzing, setAiAnalyzing]     = useState(false);
+  const [aiSuggestion, setAiSuggestion]   = useState(null);
+  const [authenticity, setAuthenticity]   = useState(null);
 
-  // Location/GPS & State Hierarchy states
+  // ── Location & State Hierarchy ────────────────────────────────────────────
   const [locationVerified, setLocationVerified] = useState(false);
-  const [coords, setCoords] = useState({ lat: null, lng: null, accuracy: null });
-  const [geoDetails, setGeoDetails] = useState(null);
-  const [selectedState, setSelectedState] = useState('Telangana');
-  const [selectedDistrict, setSelectedDistrict] = useState('Hyderabad');
-  const [selectedWard, setSelectedWard] = useState('Ward 1 - Central Circle');
-  const [locationError, setLocationError] = useState(null);
-  const [zoneStatus, setZoneStatus] = useState(null);
-  const [zoneAnnouncements, setZoneAnnouncements] = useState([]);
+  const [coords, setCoords]                     = useState({ lat: null, lng: null, accuracy: null });
+  const [geoDetails, setGeoDetails]             = useState(null);
+  const [selectedState, setSelectedState]       = useState('Telangana');
+  const [selectedDistrict, setSelectedDistrict] = useState(user?.district || 'Hyderabad');
+  const [selectedMunicipality, setSelectedMunicipality] = useState(MUNICIPAL_CORPORATIONS['Hyderabad'] || 'Greater Hyderabad Municipal Corporation (GHMC)');
+  const [selectedMandal, setSelectedMandal]     = useState('Khairatabad');
+  const [selectedWard, setSelectedWard]         = useState('Ward 1 - Central Administrative Circle');
+  const [areaLocality, setAreaLocality]         = useState('');
+  const [landmark, setLandmark]                 = useState('');
+  const [locationError, setLocationError]       = useState(null);
+  const [zoneStatus, setZoneStatus]             = useState(null);
 
   useEffect(() => {
-    // Preload YOLO model for fallback
     loadYoloModel().catch(console.error);
   }, []);
 
-  useEffect(() => {
-    if (!zone) {
-      setZoneAnnouncements([]);
-      return;
-    }
-    const zoneId = ZONES.find(z => z.name === zone)?.id;
-    if (!zoneId) { setZoneAnnouncements([]); return; }
-    fetch(`${API_BASE_URL}/api/zones/announcements/${zoneId}`)
-      .then(res => {
-        if (res.ok) return res.json();
-        throw new Error('Failed to fetch announcements');
-      })
-      .then(data => {
-        setZoneAnnouncements(data.announcements || []);
-      })
-      .catch(err => {
-        console.error('Zone announcements error:', err);
-        setZoneAnnouncements([]);
-      });
-  }, [zone]);
+  // Update municipality and mandals when district changes
+  const handleDistrictChange = (dist) => {
+    setSelectedDistrict(dist);
+    setSelectedMunicipality(MUNICIPAL_CORPORATIONS[dist] || `${dist} Municipality`);
+    const mandals = DISTRICT_MANDALS[dist] || [];
+    setSelectedMandal(mandals[0] || 'Urban Mandal');
+  };
 
   const handleLocationVerified = async ({ lat, lng, accuracy }) => {
     setLocationVerified(true);
     setCoords({ lat, lng, accuracy });
     setLocationError(null);
 
-    // Resolve State, District, Municipality & Ward via OpenStreetMap Reverse Geocoding
+    // OpenStreetMap Reverse Geocoding
     try {
       const geo = await reverseGeocode(lat, lng);
       setGeoDetails(geo);
-      if (!zone) {
-        setZone(geo.ward || geo.district || 'Hostel Area');
+
+      if (geo.state) setSelectedState(geo.state);
+      if (geo.district) {
+        const matchedDist = TELANGANA_DISTRICTS.find(d => d.toLowerCase() === geo.district.toLowerCase()) || geo.district;
+        setSelectedDistrict(matchedDist);
+        if (MUNICIPAL_CORPORATIONS[matchedDist]) {
+          setSelectedMunicipality(MUNICIPAL_CORPORATIONS[matchedDist]);
+        }
+      }
+      if (geo.ward) {
+        setAreaLocality(geo.ward);
       }
     } catch (err) {
       console.warn('Geocoding notice:', err);
     }
 
-    // Fetch zone status
+    // Fetch zone activity status
     try {
       const res = await fetch(`${API_BASE_URL}/api/zones/check-status?lat=${lat}&lng=${lng}`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -161,7 +159,7 @@ export default function ReportGarbage() {
     setLocationError(error);
   };
 
-  // ── Handle file selection → instant AI pre-analysis ──────────────────────
+  // ── Handle photo selection + AI analysis ─────────────────────────────────
   const handleFile = async (file) => {
     if (!file) return;
     const result = validateImageFile(file);
@@ -174,12 +172,10 @@ export default function ReportGarbage() {
     reader.onload = (e) => setPreview(e.target.result);
     reader.readAsDataURL(file);
 
-    // Reset AI & Authenticity states
     setAiSuggestion(null);
-    setUserOverride(false);
     setAuthenticity(null);
 
-    // Run client-side EXIF inspection immediately
+    // Client-side EXIF inspection
     try {
       const authReport = await inspectImageAuthenticity(file, Boolean(file.isLiveCameraCapture));
       setAuthenticity(authReport);
@@ -187,7 +183,7 @@ export default function ReportGarbage() {
         notify({
           type: 'warning',
           title: 'Authenticity Alert',
-          message: authReport.badgeDesc || 'Potential synthetic or edited image detected.',
+          message: authReport.badgeDesc || 'Potential synthetic or digital screen capture detected.',
           duration: 6000
         });
       }
@@ -195,7 +191,7 @@ export default function ReportGarbage() {
       console.warn('Authenticity check skipped:', err);
     }
 
-    // Call analyze-photo endpoint for instant classification
+    // Server AI pre-analysis
     setAiAnalyzing(true);
     try {
       const formData = new FormData();
@@ -206,46 +202,30 @@ export default function ReportGarbage() {
         body:    formData,
       });
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.message || data.error || 'Analysis request failed');
-      }
-      if (data.success && data.aiResult?.aiAvailable) {
+      if (res.ok && data.success && data.aiResult?.aiAvailable) {
         setAiSuggestion(data.aiResult);
 
-        // Check if AI detected fake/AI generated photo
         if (data.aiResult.isFake || data.aiResult.isAiGenerated || data.aiResult.isScreenPhoto) {
           notify({
             type: 'error',
-            title: data.aiResult.isAiGenerated ? 'AI-Generated Image Detected' : 'Invalid Waste Photo',
-            message: data.aiResult.fakeReason || 'Image appears to be synthetic, a screenshot, or not actual garbage.',
+            title: data.aiResult.isAiGenerated ? 'Synthetic Image Alert' : 'Photo Verification Notice',
+            message: data.aiResult.fakeReason || 'Image appears to be synthetic, a screenshot, or non-garbage.',
             duration: 7000
           });
         }
-
-        if (!wasteType || !userOverride) {
-          const matched = WASTE_TYPES.find(w =>
-            w.toLowerCase() === (data.aiResult.wasteType || '').toLowerCase()
-          );
-          if (matched) setWasteType(matched);
-        }
       } else {
-        throw new Error(data.aiResult?.reason || 'AI quota busy');
+        throw new Error(data.aiResult?.reason || 'Cloud AI unavailable');
       }
     } catch (err) {
-      console.log('Cloud AI failed or busy, falling back to local YOLO model...', err);
+      console.log('Falling back to on-device YOLO classifier...', err.message);
       try {
         const img = new Image();
         img.src = URL.createObjectURL(file);
         await new Promise((resolve) => { img.onload = resolve; });
         const localResult = await analyzeImageLocal(img);
         setAiSuggestion(localResult);
-        if (!wasteType || !userOverride) {
-          const matched = WASTE_TYPES.find(w => w.toLowerCase() === (localResult.wasteType || '').toLowerCase());
-          if (matched) setWasteType(matched);
-        }
       } catch (yoloErr) {
-        console.error('Local YOLO failed:', yoloErr);
-        setAiSuggestion({ aiAvailable: false, reason: 'Cloud AI busy & local model failed — select waste type manually' });
+        setAiSuggestion({ aiAvailable: false, reason: 'AI analysis optional — manual categorization active' });
       }
     } finally {
       setAiAnalyzing(false);
@@ -255,21 +235,30 @@ export default function ReportGarbage() {
   const handleDrop = (e) => {
     e.preventDefault();
     setDragOver(false);
-    handleFile(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files?.[0]) handleFile(e.dataTransfer.files[0]);
   };
 
-  // When user manually picks a waste type, mark override so AI won't overwrite it
-  const handleWasteTypeSelect = (type) => {
-    setWasteType(type);
-    setUserOverride(true);
-  };
-
-  // ── Submit form ────────────────────────────────────────────────────────────
+  // ── Submit Report ────────────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const validation = validateReportForm({ zone, description });
-    if (!validation.ok) {
-      notify({ type: 'error', title: 'Validation Error', message: Object.values(validation.errors)[0], duration: 4000 });
+
+    if (!coords.lat || !coords.lng) {
+      notify({
+        type: 'error',
+        title: 'Location Required',
+        message: 'Please allow GPS location or use current location before submitting.',
+        duration: 5000
+      });
+      return;
+    }
+
+    if (!description.trim() || description.trim().length < 5) {
+      notify({
+        type: 'error',
+        title: 'Description Needed',
+        message: 'Please provide a short description (at least 5 characters).',
+        duration: 4000
+      });
       return;
     }
 
@@ -277,59 +266,72 @@ export default function ReportGarbage() {
 
     try {
       const formData = new FormData();
-      const zoneId = ZONES.find(z => z.name === zone)?.id || 1;
-      formData.append('zone_id', zoneId);
+      formData.append('zone_id', 1);
+      formData.append('waste_type', selectedCategory.label);
       formData.append('description', description);
-      formData.append('waste_type',  wasteType);
-      formData.append('priority',    priority.toLowerCase());
-      formData.append('user_id',     user?.id || 1);
-      formData.append('location',    zone || geoDetails?.formattedAddress || 'Campus');
-      formData.append('latitude',     coords.lat);
-      formData.append('longitude',    coords.lng);
-      formData.append('gps_accuracy', coords.accuracy !== null ? coords.accuracy : '');
-      if (geoDetails) {
-        formData.append('state', geoDetails.state || 'Telangana');
-        formData.append('district', geoDetails.district || 'Hyderabad');
-        formData.append('city_municipality', geoDetails.city || 'Greater Hyderabad Municipal Corporation');
-        formData.append('ward_number', geoDetails.ward || 'Ward 1');
-        formData.append('pincode', geoDetails.pincode || '500085');
-        formData.append('formatted_address', geoDetails.formattedAddress || '');
-      }
+      formData.append('priority', priority.toLowerCase());
+      formData.append('user_id', user?.id || 1);
+      formData.append('latitude', coords.lat);
+      formData.append('longitude', coords.lng);
+      formData.append('gps_accuracy', coords.accuracy || '');
+      formData.append('state', selectedState);
+      formData.append('district', selectedDistrict);
+      formData.append('city_municipality', selectedMunicipality);
+      formData.append('mandal', selectedMandal);
+      formData.append('ward_number', selectedWard);
+      formData.append('area_locality', areaLocality || geoDetails?.ward || 'Central Locality');
+      formData.append('landmark', landmark);
+      formData.append('pincode', geoDetails?.pincode || '500001');
+
+      const locSummary = [
+        landmark,
+        areaLocality || geoDetails?.ward,
+        selectedWard,
+        selectedMunicipality,
+        selectedDistrict,
+        selectedState
+      ].filter(Boolean).join(', ');
+      formData.append('location', locSummary);
+      formData.append('formatted_address', geoDetails?.formattedAddress || locSummary);
+
       if (fileObj) {
         const compressed = await compressImage(fileObj);
         formData.append('image', compressed);
       }
 
-      const res  = await fetch(`${API_BASE_URL}/api/reports/submit`, {
-        method:  'POST',
+      const res = await fetch(`${API_BASE_URL}/api/reports/submit`, {
+        method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
-        body:    formData,
+        body: formData,
       });
       const data = await res.json();
 
-      // Handle fake photo rejection from backend
       if (!res.ok && data.isFake) {
         setSubmitting(false);
         setReportResult({ isFake: true, reason: data.reason });
         setSuccess(true);
         return;
       }
-      if (!res.ok) {
-        throw new Error(data.detail || data.error || data.message || 'Submit failed');
-      }
 
-      if (fileObj && !data.photoUrl) {
-        throw new Error('Photo was not saved to the server. Please try again.');
+      if (!res.ok) {
+        throw new Error(data.error || data.message || 'Submission failed');
       }
 
       setReportResult({
-        id:            `RPT-00${data.reportId}`,
-        points:        data.pointsEarned        || 0,
-        photoPoints:   data.photoPointsEarned   || 0,
-        reportPoints:  data.reportPointsEarned  || 0,
-        aiResult:      data.aiResult            || null,
+        id: `RPT-00${data.reportId}`,
+        category: selectedCategory.label,
+        location: locSummary,
+        lat: coords.lat,
+        lng: coords.lng,
+        accuracy: coords.accuracy,
+        status: 'Submitted / Pending Verification',
+        submittedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        points: data.pointsEarned || 0,
+        photoPoints: data.photoPointsEarned || 0,
+        reportPoints: data.reportPointsEarned || 0,
+        aiResult: data.aiResult || null,
+        photoUrl: data.photoUrl,
         newTotalPoints: data.newTotalPoints,
-        photoUrl:      data.photoUrl ? (data.photoUrl.startsWith('http') ? data.photoUrl : `${API_BASE_URL}${data.photoUrl}`) : null,
       });
 
       if (data.pointsEarned && user) {
@@ -338,447 +340,417 @@ export default function ReportGarbage() {
       refreshPoints();
       setSubmitting(false);
       setSuccess(true);
-      notify({ type: 'success', title: 'Upload Successful!', message: `Report for ${zone} saved to database.`, category: 'report', icon: '📸', duration: 5000 });
+      notify({
+        type: 'success',
+        title: 'Civic Report Registered!',
+        message: `Report for ${selectedDistrict} submitted successfully.`,
+        category: 'report',
+        icon: '🏛️',
+        duration: 5000
+      });
     } catch (err) {
       setSubmitting(false);
-      notify({ type: 'error', title: 'Upload Failed', message: err.message || 'Could not save report. Check backend is running.', duration: 6000 });
+      notify({
+        type: 'error',
+        title: 'Submission Error',
+        message: err.message || 'Could not submit report. Ensure backend is running.',
+        duration: 6000
+      });
     }
   };
 
   const resetForm = () => {
-    setPreview(null); setFileObj(null); setZone(''); setDesc('');
-    setWasteType(''); setAiSuggestion(null); setUserOverride(false);
-    setCoords({ lat: null, lng: null, accuracy: null });
+    setPreview(null);
+    setFileObj(null);
+    setDesc('');
+    setAreaLocality('');
+    setLandmark('');
+    setAiSuggestion(null);
+    setReportResult(null);
+    setSuccess(false);
   };
 
-  const progress = [!!preview, !!zone, !!wasteType, description.trim().length > 10].filter(Boolean).length;
+  const progress = [
+    !!selectedCategory,
+    !!preview,
+    !!(coords.lat && coords.lng),
+    description.trim().length >= 5
+  ].filter(Boolean).length;
 
   return (
     <div className="app-layout">
       <Sidebar />
       <main className="main-content">
-        <div className="page-header flex items-center gap-4">
-          <button className="btn btn-ghost btn-sm" onClick={() => navigate('/student')} id="back-to-dashboard">
-            <ArrowLeft size={16} /> Back
-          </button>
-          <div>
-            <h1>📸 Report Garbage</h1>
-            <p>Upload a garbage photo to improve civic cleanliness and earn <strong className="text-accent">+15 points</strong></p>
+        <div className="page-header flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-3">
+            <button className="btn btn-ghost btn-sm" onClick={() => navigate('/citizen')} id="back-to-dashboard">
+              <ArrowLeft size={16} /> Dashboard
+            </button>
+            <div>
+              <h1>🏛️ Report Civic Cleanliness Issue</h1>
+              <p>Submit garbage, sanitation, or infrastructure complaints with automatic GPS geo-tagging</p>
+            </div>
           </div>
+          <span className="badge badge-primary" style={{ padding: '6px 14px', fontSize: '0.85rem' }}>
+            +15 Municipal Tax Rebate Points
+          </span>
         </div>
 
-        {/* Progress bar */}
-        <div className="glass-card" style={{ padding: '16px 24px', marginBottom: '24px' }}>
+        {/* 6-Step Workflow Progress Bar */}
+        <div className="glass-card" style={{ padding: '16px 20px', marginBottom: '24px' }}>
           <div className="flex justify-between items-center mb-2">
-            <span className="text-sm font-semibold">Form Completion</span>
+            <span className="text-sm font-semibold">Civic Report Workflow ({progress}/4 steps completed)</span>
             <span className="text-sm text-accent font-bold">{Math.round((progress / 4) * 100)}%</span>
           </div>
           <div style={{ height: '6px', background: 'var(--glass-border)', borderRadius: '4px', overflow: 'hidden' }}>
             <div style={{ width: `${(progress / 4) * 100}%`, height: '100%', background: 'var(--gradient-primary)', borderRadius: '4px', transition: 'width 0.4s ease' }} />
           </div>
-          <div className="flex gap-4 mt-2" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            {['Upload Image', 'Select Zone', 'Waste Type', 'Description'].map((s, i) => (
-              <span key={i} style={{ color: i < progress ? 'var(--accent-green)' : 'var(--text-muted)' }}>
-                {i < progress ? '✓' : '○'} {s}
-              </span>
-            ))}
+          <div className="flex gap-4 mt-2 flex-wrap" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            <span style={{ color: selectedCategory ? 'var(--accent-green)' : 'inherit' }}>1. Select Issue</span>
+            <span style={{ color: preview ? 'var(--accent-green)' : 'inherit' }}>2. Photo Evidence</span>
+            <span style={{ color: coords.lat ? 'var(--accent-green)' : 'inherit' }}>3. Detect Location</span>
+            <span style={{ color: description.trim().length >= 5 ? 'var(--accent-green)' : 'inherit' }}>4. Description &amp; Submit</span>
           </div>
         </div>
 
         <form onSubmit={handleSubmit}>
-          <div className="glass-card report-form-card">
-            <LocationVerifier
-              onLocationVerified={handleLocationVerified}
-              onLocationFailed={handleLocationFailed}
-            />
+          <div className="glass-card report-form-card" style={{ padding: '24px' }}>
 
-            {geoDetails && (
-              <div style={{
-                margin: '10px 0 16px',
-                padding: '10px 14px',
-                background: 'rgba(16, 185, 129, 0.08)',
-                border: '1px solid rgba(16, 185, 129, 0.25)',
-                borderRadius: '10px',
-                fontSize: '0.82rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                color: 'var(--text-secondary)'
-              }}>
-                <MapPin size={16} color="var(--accent-green)" />
-                <div>
-                  <strong style={{ color: 'var(--text-primary)' }}>{geoDetails.district}, {geoDetails.state}</strong>
-                  <span style={{ marginLeft: '6px', color: 'var(--text-muted)' }}>({geoDetails.city} • {geoDetails.ward})</span>
-                </div>
-              </div>
-            )}
-
-            <ZoneWarning zoneStatus={zoneStatus} />
-
-            {zoneAnnouncements.length > 0 && (
-              <div style={{
-                padding: '14px 18px',
-                background: 'rgba(59,130,246,0.08)',
-                border: '1px solid rgba(59,130,246,0.2)',
-                borderRadius: '10px',
-                marginBottom: '16px',
-              }}>
-                <div style={{ fontWeight: 700, color: '#60a5fa', fontSize: '0.85rem', marginBottom: '6px' }}>📢 Zone Coordinator Notice</div>
-                {zoneAnnouncements.map(a => (
-                  <div key={a.id} style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                    <strong>{a.title}:</strong> {a.message}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* ── Image Upload ───────────────────────────────────────────── */}
-            <div className="form-section">
-              <div className="upload-section-header">
-                <div className="form-section-title mb-0">
-                  <Camera size={18} color="var(--accent-green)" /> Upload Garbage Image
-                </div>
-                <div className="points-badge-prominent">
-                  <Star size={14} fill="currentColor" /> +15 POINTS
-                </div>
-              </div>
-
-              {!preview ? (
-                <div style={!locationVerified ? { pointerEvents: 'none', opacity: 0.6 } : {}}>
-                  <CameraCapture onPhotoCapture={handleFile} />
-                </div>
-              ) : (
-                <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
-                  <div className="upload-preview-wrap">
-                    <img src={preview} alt="Garbage preview" className="upload-preview-img" />
+            {/* STEP 1: Select Civic Issue Category */}
+            <div className="form-section mb-6">
+              <label className="form-label font-bold text-sm mb-3 block" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Tag size={16} style={{ color: 'var(--accent-green)' }} />
+                STEP 1: SELECT CIVIC ISSUE CATEGORY
+              </label>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))',
+                  gap: '10px'
+                }}
+              >
+                {CIVIC_ISSUE_CATEGORIES.map((cat) => {
+                  const isSelected = selectedCategory?.id === cat.id;
+                  return (
                     <button
+                      key={cat.id}
                       type="button"
-                      className="upload-preview-remove"
-                      onClick={() => { setPreview(null); setFileObj(null); setAiSuggestion(null); }}
-                      aria-label="Remove image"
-                    >
-                      <X size={16} />
-                    </button>
-                    <div style={{ padding: '6px 0', fontSize: '0.78rem', color: 'var(--accent-green)' }}>✓ Image ready for upload</div>
-                  </div>
-
-                  {/* AI Analysis Result Panel */}
-                  <div style={{ flex: 1, minWidth: '220px' }}>
-                    {aiAnalyzing && (
-                      <div className="glass-card" style={{ padding: '16px', background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.25)' }}>
-                        <div className="flex items-center gap-3">
-                          <span className="spinner" style={{ borderColor: '#8b5cf6', borderTopColor: 'transparent' }} />
-                          <div>
-                            <div style={{ fontWeight: 600, fontSize: '0.85rem', color: '#a78bfa' }}>🔍 AI Analyzing Photo...</div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Detecting waste type automatically</div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {!aiAnalyzing && aiSuggestion?.aiAvailable && (
-                      <div className="glass-card" style={{ padding: '16px', background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)' }}>
-                        <div className="flex items-center gap-2 mb-3">
-                          <Sparkles size={15} color="#10b981" />
-                          <span style={{ fontWeight: 700, fontSize: '0.82rem', color: '#10b981' }}>AI Detection Result</span>
-                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: 'auto' }}>
-                            {aiSuggestion.confidence}% confidence
-                          </span>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.82rem' }}>
-                          <div className="flex justify-between">
-                            <span style={{ color: 'var(--text-muted)' }}>Waste Type</span>
-                            <strong style={{ color: 'var(--text-primary)' }}>♻️ {aiSuggestion.wasteType}</strong>
-                          </div>
-                          {aiSuggestion.binColor && BIN_COLORS[aiSuggestion.binColor] && (
-                            <div className="flex justify-between">
-                              <span style={{ color: 'var(--text-muted)' }}>Bin Color</span>
-                              <strong>{BIN_COLORS[aiSuggestion.binColor].label} {aiSuggestion.binColor} ({aiSuggestion.binLabel})</strong>
-                            </div>
-                          )}
-                          {aiSuggestion.tips && (
-                            <div style={{ marginTop: '6px', padding: '8px 10px', borderRadius: '6px', background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.15)', color: '#60a5fa', fontSize: '0.75rem' }}>
-                              💡 {aiSuggestion.tips}
-                            </div>
-                          )}
-                        </div>
-                        {userOverride && (
-                          <div style={{ marginTop: '8px', fontSize: '0.72rem', color: '#f59e0b' }}>
-                            ⚠️ Using your manual selection (AI suggestion overridden)
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {!aiAnalyzing && aiSuggestion && !aiSuggestion.aiAvailable && (
-                      <div className="glass-card" style={{ padding: '12px 16px', background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)' }}>
-                        <div style={{ fontSize: '0.8rem', color: '#f59e0b' }}>
-                          ⚠️ AI unavailable — please select waste type manually below
-                        </div>
-                        {aiSuggestion.reason && (
-                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '6px' }}>
-                            {aiSuggestion.reason}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Photo Authenticity & Anti-Fraud Badge */}
-                    {authenticity && (
-                      <div className="glass-card" style={{
-                        marginTop: '12px',
+                      onClick={() => {
+                        setSelectedCategory(cat);
+                        setPriority(cat.defaultPriority);
+                      }}
+                      className="glass-card"
+                      style={{
                         padding: '12px 14px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        cursor: 'pointer',
+                        textAlign: 'left',
                         borderRadius: '10px',
-                        background: authenticity.riskLevel === 'HIGH' 
-                          ? 'rgba(239, 68, 68, 0.08)' 
-                          : authenticity.riskLevel === 'MODERATE'
-                          ? 'rgba(245, 158, 11, 0.08)'
-                          : 'rgba(16, 185, 129, 0.08)',
-                        border: `1px solid ${
-                          authenticity.riskLevel === 'HIGH'
-                            ? 'rgba(239, 68, 68, 0.3)'
-                            : authenticity.riskLevel === 'MODERATE'
-                            ? 'rgba(245, 158, 11, 0.25)'
-                            : 'rgba(16, 185, 129, 0.25)'
-                        }`
-                      }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                          {authenticity.riskLevel === 'HIGH' ? (
-                            <ShieldAlert size={16} color="#ef4444" />
-                          ) : (
-                            <ShieldCheck size={16} color={authenticity.riskLevel === 'MODERATE' ? '#f59e0b' : '#10b981'} />
-                          )}
-                          <span style={{
-                            fontWeight: 700,
-                            fontSize: '0.82rem',
-                            color: authenticity.riskLevel === 'HIGH' ? '#ef4444' : authenticity.riskLevel === 'MODERATE' ? '#f59e0b' : '#10b981'
-                          }}>
-                            {authenticity.badgeLabel}
-                          </span>
+                        border: isSelected ? '2px solid var(--accent-green)' : '1px solid var(--glass-border)',
+                        background: isSelected ? 'rgba(16, 185, 129, 0.12)' : 'var(--bg-card)',
+                        color: 'var(--text-primary)',
+                        transition: 'all 0.2s ease',
+                      }}
+                    >
+                      <span style={{ fontSize: '1.4rem' }}>{cat.icon}</span>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: '0.82rem', fontWeight: isSelected ? 700 : 500, lineHeight: 1.2 }}>
+                          {cat.label}
                         </div>
-                        <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-                          {authenticity.badgeDesc}
-                        </p>
                       </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* STEP 2: Photo Capture & AI Classification */}
+            <div className="form-section mb-6">
+              <label className="form-label font-bold text-sm mb-3 block" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Camera size={16} style={{ color: '#38bdf8' }} />
+                STEP 2: CAPTURE OR UPLOAD EVIDENCE PHOTO
+              </label>
+
+              <CameraCapture onCapture={handleFile} />
+
+              <div className="camera-divider">or choose from device storage</div>
+
+              <div
+                className={`upload-zone ${dragOver ? 'drag-over' : ''}`}
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={handleDrop}
+                onClick={() => fileRef.current?.click()}
+                style={{
+                  border: '2px dashed var(--glass-border)',
+                  borderRadius: '12px',
+                  padding: '24px',
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  backgroundColor: 'rgba(255, 255, 255, 0.02)'
+                }}
+              >
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => handleFile(e.target.files?.[0])}
+                  style={{ display: 'none' }}
+                />
+                <Upload size={32} style={{ margin: '0 auto 8px', color: 'var(--text-muted)' }} />
+                <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600 }}>Click to browse or drag &amp; drop an image</p>
+                <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>JPEG, PNG, WebP up to 10MB</p>
+              </div>
+
+              {preview && (
+                <div style={{ marginTop: '16px', display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <div style={{ width: '120px', height: '120px', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--glass-border)' }}>
+                    <img src={preview} alt="Upload preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: '220px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                      <span className="badge badge-green">✓ Photo Loaded</span>
+                      {authenticity?.badgeDesc && (
+                        <span className="badge badge-blue">🛡️ {authenticity.badgeDesc}</span>
+                      )}
+                    </div>
+                    {aiAnalyzing && (
+                      <p style={{ fontSize: '0.82rem', color: '#a78bfa', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span className="spinner" style={{ width: '14px', height: '14px' }} />
+                        Analyzing photo with Gemini AI...
+                      </p>
+                    )}
+                    {aiSuggestion?.wasteType && (
+                      <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                        AI Identified: <strong style={{ color: '#a78bfa' }}>{aiSuggestion.wasteType}</strong> ({aiSuggestion.confidence || 90}% confidence)
+                      </p>
                     )}
                   </div>
                 </div>
               )}
             </div>
 
-            {/* ── Administrative Geo-Hierarchy (State / District / Ward) ────── */}
-            <div className="form-section">
-              <div className="form-section-title">
-                <MapPin size={18} color="var(--accent-green)" /> Administrative Division &amp; Ward
-              </div>
-              <div className="grid-3 gap-3 mb-4">
-                <div>
-                  <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>
-                    State
-                  </label>
-                  <select
-                    className="input-field"
-                    value={selectedState}
-                    onChange={(e) => {
-                      const st = e.target.value;
-                      setSelectedState(st);
-                      const dists = STATES_AND_DISTRICTS[st] || [];
-                      if (dists.length > 0) setSelectedDistrict(dists[0]);
-                    }}
-                    style={{ width: '100%', padding: '10px', fontSize: '0.85rem' }}
-                  >
-                    {Object.keys(STATES_AND_DISTRICTS).map(st => (
-                      <option key={st} value={st}>{st}</option>
-                    ))}
-                  </select>
-                </div>
+            {/* STEP 3 & 4: Automatic Location Detection + REPORT LOCATION Form Details */}
+            <div className="form-section mb-6">
+              <label className="form-label font-bold text-sm mb-3 block" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Navigation size={16} style={{ color: '#a78bfa' }} />
+                STEP 3 &amp; 4: REPORT LOCATION (AUTOMATIC GPS &amp; ADMINISTRATIVE DETAILS)
+              </label>
 
-                <div>
-                  <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>
-                    District
-                  </label>
-                  <select
-                    className="input-field"
-                    value={selectedDistrict}
-                    onChange={(e) => setSelectedDistrict(e.target.value)}
-                    style={{ width: '100%', padding: '10px', fontSize: '0.85rem' }}
-                  >
-                    {(STATES_AND_DISTRICTS[selectedState] || []).map(dist => (
-                      <option key={dist} value={dist}>{dist}</option>
-                    ))}
-                  </select>
-                </div>
+              <LocationVerifier
+                onLocationVerified={handleLocationVerified}
+                onLocationFailed={handleLocationFailed}
+                geoDetails={geoDetails}
+              />
 
-                <div>
-                  <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>
-                    Ward / Local Sector
-                  </label>
-                  <select
-                    className="input-field"
-                    value={selectedWard}
-                    onChange={(e) => {
-                      setSelectedWard(e.target.value);
-                      setZone(e.target.value);
-                    }}
-                    style={{ width: '100%', padding: '10px', fontSize: '0.85rem' }}
-                  >
-                    {DEFAULT_WARDS.map(w => (
-                      <option key={w} value={w}>{w}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '12px' }}>
-                🏛️ Assigned Corporation: <strong style={{ color: 'var(--accent-green)' }}>{MUNICIPAL_CORPORATIONS[selectedDistrict] || `${selectedDistrict} Municipality`}</strong>
-              </div>
-
-              <div className="form-section-title" style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                📍 Spot / Micro-Location
-              </div>
-              <div className="zone-grid" style={!locationVerified ? { pointerEvents: 'none', opacity: 0.6 } : {}}>
-                {ZONES.map(z => (
-                  <div
-                    key={z.name}
-                    className={`zone-option ${zone === z.name ? 'selected' : ''}`}
-                    onClick={() => locationVerified && setZone(z.name)}
-                    id={`zone-${z.name.replace(/\s+/g, '-').toLowerCase()}`}
-                  >
-                    <div className="zone-emoji">{z.emoji}</div>
-                    <div className="zone-name">{z.name}</div>
+              <div
+                style={{
+                  background: 'rgba(255, 255, 255, 0.02)',
+                  border: '1px solid var(--glass-border)',
+                  borderRadius: '12px',
+                  padding: '20px',
+                  marginTop: '16px'
+                }}
+              >
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+                  {/* State */}
+                  <div>
+                    <label className="form-label text-xs text-muted block mb-1">State</label>
+                    <input
+                      type="text"
+                      className="input-field"
+                      value={selectedState}
+                      readOnly
+                      style={{ opacity: 0.9, backgroundColor: 'rgba(255,255,255,0.03)' }}
+                    />
                   </div>
+
+                  {/* District */}
+                  <div>
+                    <label className="form-label text-xs text-muted block mb-1">District</label>
+                    <select
+                      className="input-field"
+                      value={selectedDistrict}
+                      onChange={(e) => handleDistrictChange(e.target.value)}
+                    >
+                      {TELANGANA_DISTRICTS.map(d => (
+                        <option key={d} value={d}>{d}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Municipality */}
+                  <div>
+                    <label className="form-label text-xs text-muted block mb-1">Municipality / Corporation</label>
+                    <input
+                      type="text"
+                      className="input-field"
+                      value={selectedMunicipality}
+                      onChange={(e) => setSelectedMunicipality(e.target.value)}
+                    />
+                  </div>
+
+                  {/* Mandal */}
+                  <div>
+                    <label className="form-label text-xs text-muted block mb-1">Mandal</label>
+                    <select
+                      className="input-field"
+                      value={selectedMandal}
+                      onChange={(e) => setSelectedMandal(e.target.value)}
+                    >
+                      {(DISTRICT_MANDALS[selectedDistrict] || ['Urban Mandal', 'Rural Mandal']).map(m => (
+                        <option key={m} value={m}>{m}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Ward */}
+                  <div>
+                    <label className="form-label text-xs text-muted block mb-1">Ward Number / Name</label>
+                    <select
+                      className="input-field"
+                      value={selectedWard}
+                      onChange={(e) => setSelectedWard(e.target.value)}
+                    >
+                      {DEFAULT_WARDS.map(w => (
+                        <option key={w} value={w}>{w}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Area / Locality */}
+                  <div>
+                    <label className="form-label text-xs text-muted block mb-1">Area / Locality / Street</label>
+                    <input
+                      type="text"
+                      className="input-field"
+                      placeholder="e.g. Near Bus Stand, Main Road"
+                      value={areaLocality}
+                      onChange={(e) => setAreaLocality(e.target.value)}
+                    />
+                  </div>
+
+                  {/* Landmark */}
+                  <div>
+                    <label className="form-label text-xs text-muted block mb-1">Landmark (Optional)</label>
+                    <input
+                      type="text"
+                      className="input-field"
+                      placeholder="e.g. Opposite State Bank, Near Metro Pillar"
+                      value={landmark}
+                      onChange={(e) => setLandmark(e.target.value)}
+                    />
+                  </div>
+
+                  {/* GPS Coordinates & Accuracy */}
+                  <div>
+                    <label className="form-label text-xs text-muted block mb-1">GPS Coordinates &amp; Accuracy</label>
+                    <input
+                      type="text"
+                      className="input-field"
+                      readOnly
+                      value={coords.lat && coords.lng ? `${coords.lat}, ${coords.lng} (±${coords.accuracy || 10}m)` : 'GPS detecting...'}
+                      style={{ fontFamily: 'monospace', fontSize: '0.8rem', color: '#38bdf8' }}
+                    />
+                  </div>
+                </div>
+
+                {coords.lat && coords.lng && (
+                  <div style={{ marginTop: '14px', display: 'flex', gap: '10px' }}>
+                    <a
+                      href={`https://www.google.com/maps?q=${coords.lat},${coords.lng}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn-ghost btn-sm"
+                      style={{ fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      <Map size={14} /> View on External Map
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* STEP 5: Description & Priority */}
+            <div className="form-section mb-6">
+              <label className="form-label font-bold text-sm mb-2 block" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <FileText size={16} style={{ color: '#ca8a04' }} />
+                STEP 5: COMPLAINT DETAILS &amp; SEVERITY
+              </label>
+
+              <textarea
+                className="input-field"
+                rows={3}
+                placeholder="Describe the issue in detail (e.g., Overflowing commercial bin causing smell, road access blocked, open drain hazard)..."
+                value={description}
+                onChange={(e) => setDesc(e.target.value)}
+                style={{ width: '100%', marginBottom: '16px' }}
+              />
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                <label className="text-xs font-semibold text-muted">Priority Level:</label>
+                {['Low', 'Medium', 'High', 'Critical'].map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setPriority(p)}
+                    className="btn btn-sm"
+                    style={{
+                      borderRadius: '8px',
+                      backgroundColor: priority === p
+                        ? p === 'Critical' ? '#dc2626' : p === 'High' ? '#ef4444' : p === 'Medium' ? '#f59e0b' : '#10b981'
+                        : 'var(--bg-card)',
+                      color: priority === p ? '#fff' : 'var(--text-secondary)',
+                      border: '1px solid var(--glass-border)'
+                    }}
+                  >
+                    {p}
+                  </button>
                 ))}
               </div>
             </div>
 
-            {/* ── Waste Type (AI suggestion + manual override) ───────────── */}
-            <div className="form-section">
-              <div className="grid-2" style={{ gap: '20px' }}>
-                <div className="input-group">
-                  <div className="form-section-title" style={{ marginBottom: '8px' }}>
-                    <span>♻️</span> Waste Type
-                    {aiSuggestion?.aiAvailable && !userOverride && (
-                      <span style={{ fontSize: '0.7rem', color: '#10b981', marginLeft: '8px', fontWeight: 400 }}>
-                        ✨ AI suggested
-                      </span>
-                    )}
-                    {userOverride && (
-                      <span style={{ fontSize: '0.7rem', color: '#f59e0b', marginLeft: '8px', fontWeight: 400 }}>
-                        ✏️ Manual selection
-                      </span>
-                    )}
-                  </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                    {WASTE_TYPES.map(w => (
-                      <button
-                        key={w}
-                        type="button"
-                        className={`btn btn-sm ${wasteType === w ? 'btn-primary' : 'btn-ghost'}`}
-                        onClick={() => handleWasteTypeSelect(w)}
-                        disabled={!locationVerified}
-                        id={`waste-${w.toLowerCase().replace(/\s+/g, '-')}`}
-                        style={
-                          wasteType === w && aiSuggestion?.aiAvailable && !userOverride
-                            ? { boxShadow: '0 0 0 2px #10b981' }
-                            : {}
-                        }
-                      >
-                        {w}
-                      </button>
-                    ))}
-                  </div>
-                  <div style={{ marginTop: '8px', fontSize: '0.74rem', color: 'var(--text-muted)' }}>
-                    {aiSuggestion?.aiAvailable && !userOverride
-                      ? `🤖 AI detected: ${aiSuggestion.wasteType} — click another to override`
-                      : 'Select the waste type or let AI detect it from your photo'}
-                  </div>
-                </div>
-
-                <div className="input-group">
-                  <div className="form-section-title" style={{ marginBottom: '8px' }}>
-                    <span>⚡</span> Priority Level
-                  </div>
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    {['Low', 'Medium', 'High'].map(p => (
-                      <button
-                        key={p}
-                        type="button"
-                        className={`btn btn-sm ${priority === p ? (p === 'High' ? 'btn-danger' : p === 'Medium' ? '' : 'btn-outline') : 'btn-ghost'}`}
-                        style={priority === p && p === 'Medium' ? { background: 'rgba(245,158,11,0.2)', border: '1.5px solid rgba(245,158,11,0.4)', color: '#fbbf24' } : {}}
-                        onClick={() => setPriority(p)}
-                        disabled={!locationVerified}
-                        id={`priority-${p.toLowerCase()}`}
-                      >
-                        {p === 'High' ? '🔴' : p === 'Medium' ? '🟡' : '🟢'} {p}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* ── Description ───────────────────────────────────────────── */}
-            <div className="form-section">
-              <div className="form-section-title">
-                <FileText size={18} color="var(--accent-green)" /> Description
-              </div>
-              <textarea
-                className="input-field"
-                placeholder="Describe the garbage issue in detail..."
-                rows={4}
-                value={description}
-                onChange={e => setDesc(e.target.value)}
-                style={{ resize: 'vertical', minHeight: '100px' }}
-                id="report-description"
-                disabled={!locationVerified}
-              />
-              <div style={{ fontSize: '0.75rem', color: description.length > 10 ? 'var(--accent-green)' : 'var(--text-muted)', marginTop: '4px', textAlign: 'right' }}>
-                {description.length} characters {description.length > 10 ? '✓' : '(min. 10)'}
-              </div>
-            </div>
-
-            {/* ── Submit ────────────────────────────────────────────────── */}
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-              <button type="button" className="btn btn-ghost btn-lg" onClick={() => navigate('/student')}>Cancel</button>
+            {/* STEP 6: Submit Report */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={() => navigate('/citizen')}
+              >
+                Cancel
+              </button>
               <button
                 type="submit"
-                className={`btn btn-primary btn-lg ${submitting ? 'loading' : ''}`}
-                id="submit-report"
-                disabled={!locationVerified || !preview || submitting || aiAnalyzing}
+                className="btn btn-primary"
+                disabled={submitting || !coords.lat || !coords.lng || description.trim().length < 5}
+                style={{ minWidth: '180px', padding: '12px 24px', fontSize: '0.95rem' }}
               >
                 {submitting ? (
-                  <><span className="spinner" /> Submitting...</>
-                ) : aiAnalyzing ? (
-                  <><span className="spinner" /> AI Analyzing...</>
-                ) : !locationVerified ? (
-                  "📡 Verifying location..."
-                ) : !preview ? (
-                  "📸 Take a photo first"
+                  <><span className="spinner" /> Submitting Report...</>
                 ) : (
-                  <><Send size={18} /> ✅ Submit Report (+15 pts)</>
+                  <><Send size={18} /> Register Civic Report</>
                 )}
               </button>
             </div>
           </div>
         </form>
 
-        {/* ── Success / Result Modal ──────────────────────────────────────── */}
+        {/* Post-Submission Modal */}
         {success && reportResult && (
           <div className="success-overlay" onClick={() => setSuccess(false)}>
-            <div className="glass-card success-card" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px', width: '90%' }}>
-
-              {/* FAKE PHOTO */}
+            <div className="glass-card success-card" onClick={e => e.stopPropagation()} style={{ maxWidth: '520px', width: '92%' }}>
               {reportResult.isFake ? (
                 <>
                   <div style={{ fontSize: '3rem', marginBottom: '8px' }}>❌</div>
-                  <h2 style={{ color: '#ef4444' }}>Invalid Photo</h2>
-                  <p>Please upload an actual waste/garbage photo.</p>
+                  <h2 style={{ color: '#ef4444' }}>Photo Verification Notice</h2>
+                  <p>Please upload an authentic photo of actual civic waste or infrastructure issues.</p>
                   {reportResult.reason && (
                     <div style={{ margin: '12px 0', padding: '10px 14px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: '8px', fontSize: '0.85rem', color: '#f87171' }}>
                       {reportResult.reason}
                     </div>
                   )}
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No points deducted.</p>
                   <button className="btn btn-primary" style={{ marginTop: '20px' }} onClick={() => { setSuccess(false); resetForm(); }}>
                     Try Again
                   </button>
@@ -786,102 +758,66 @@ export default function ReportGarbage() {
               ) : (
                 <>
                   <div className="success-icon">🎉</div>
-                  <h2>Report Submitted!</h2>
-                  <p>Great job! Your contribution helps keep our state and municipal wards clean.</p>
+                  <h2 style={{ fontSize: '1.4rem', fontWeight: 800 }}>Civic Report Submitted Successfully!</h2>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '16px' }}>
+                    Your complaint has been registered in the Telangana municipal grievance dispatch system.
+                  </p>
+
+                  <div
+                    style={{
+                      background: 'rgba(255,255,255,0.03)',
+                      border: '1px solid var(--glass-border)',
+                      borderRadius: '12px',
+                      padding: '16px',
+                      textAlign: 'left',
+                      marginBottom: '16px'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <span className="text-muted text-xs">Report ID:</span>
+                      <strong style={{ fontFamily: 'monospace', color: '#38bdf8' }}>{reportResult.id}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <span className="text-muted text-xs">Issue Category:</span>
+                      <strong>{reportResult.category}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <span className="text-muted text-xs">Location:</span>
+                      <span style={{ fontSize: '0.8rem', maxWidth: '65%', textAlign: 'right' }}>{reportResult.location}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <span className="text-muted text-xs">GPS Coordinates:</span>
+                      <span style={{ fontSize: '0.8rem', fontFamily: 'monospace', color: '#38bdf8' }}>{reportResult.lat}, {reportResult.lng} (±{reportResult.accuracy || 10}m)</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span className="text-muted text-xs">Status:</span>
+                      <span className="badge badge-yellow">{reportResult.status}</span>
+                    </div>
+                  </div>
 
                   {reportResult.photoUrl && (
-                    <div style={{ margin: '16px 0', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--glass-border)' }}>
-                      <img
+                    <div style={{ margin: '14px 0', borderRadius: '10px', overflow: 'hidden' }}>
+                      <SafeImage
                         src={reportResult.photoUrl}
-                        alt="Submitted waste"
-                        style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', display: 'block' }}
+                        alt="Submitted evidence"
+                        style={{ width: '100%', height: '160px', objectFit: 'cover' }}
                       />
-                      <div style={{ padding: '8px 12px', fontSize: '0.75rem', color: 'var(--accent-green)', background: 'rgba(16,185,129,0.08)' }}>
-                        ✓ Photo saved to database
-                      </div>
                     </div>
                   )}
 
-                  {/* AI Result Card */}
-                  {reportResult.aiResult?.aiAvailable && (
-                    <div style={{ width: '100%', margin: '16px 0', borderRadius: '10px', overflow: 'hidden', border: '1px solid rgba(139,92,246,0.25)' }}>
-                      <div style={{ background: 'rgba(139,92,246,0.12)', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Sparkles size={15} color="#a78bfa" />
-                        <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#a78bfa' }}>🗑️ AI Detection Result</span>
-                        {reportResult.aiResult.manualOverride && (
-                          <span style={{ fontSize: '0.7rem', color: '#f59e0b', marginLeft: 'auto' }}>✏️ Manual override</span>
-                        )}
-                      </div>
-                      <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.85rem' }}>
-                        <div className="flex justify-between">
-                          <span style={{ color: 'var(--text-muted)' }}>Type</span>
-                          <strong>♻️ {reportResult.aiResult.wasteType?.toUpperCase()}</strong>
-                        </div>
-                        {reportResult.aiResult.binColor && BIN_COLORS[reportResult.aiResult.binColor] && (
-                          <div className="flex justify-between">
-                            <span style={{ color: 'var(--text-muted)' }}>Bin</span>
-                            <strong>{BIN_COLORS[reportResult.aiResult.binColor].label} {reportResult.aiResult.binColor} ({reportResult.aiResult.binLabel})</strong>
-                          </div>
-                        )}
-                        <div className="flex justify-between">
-                          <span style={{ color: 'var(--text-muted)' }}>Confidence</span>
-                          <strong style={{ color: reportResult.aiResult.confidence > 70 ? '#10b981' : '#f59e0b' }}>
-                            {reportResult.aiResult.confidence}%
-                          </strong>
-                        </div>
-                        {reportResult.aiResult.severity && (
-                          <div className="flex justify-between">
-                            <span style={{ color: 'var(--text-muted)' }}>Severity</span>
-                            <strong style={{ color: SEVERITY_CONFIG[reportResult.aiResult.severity]?.color }}>
-                              {SEVERITY_CONFIG[reportResult.aiResult.severity]?.label} ({reportResult.aiResult.severity}/10)
-                            </strong>
-                          </div>
-                        )}
-                        {reportResult.aiResult.tips && (
-                          <div style={{ marginTop: '4px', padding: '8px 10px', borderRadius: '6px', background: 'rgba(59,130,246,0.08)', color: '#60a5fa', fontSize: '0.78rem' }}>
-                            💡 {reportResult.aiResult.tips}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Duplicate Warning */}
-                  {reportResult.aiResult?.isDuplicate && (
-                    <div style={{ width: '100%', margin: '8px 0', padding: '12px 16px', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '8px', display: 'flex', gap: '10px', alignItems: 'flex-start', fontSize: '0.82rem' }}>
-                      <AlertTriangle size={16} color="#f59e0b" style={{ flexShrink: 0, marginTop: '2px' }} />
-                      <div>
-                        <div style={{ fontWeight: 600, color: '#f59e0b', marginBottom: '2px' }}>⚠️ Similar Report Exists</div>
-                        <div style={{ color: 'var(--text-muted)' }}>A similar report was made recently nearby. Your report was still saved.</div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Points */}
                   {reportResult.points > 0 && (
-                    <div style={{ margin: '12px 0', padding: '12px 20px', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', color: 'var(--accent-green)', fontWeight: 'bold' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.2rem' }}>
-                        <Star fill="currentColor" size={20} />
-                        You earned +{reportResult.points} Points!
-                      </div>
-                      <div style={{ fontSize: '0.82rem', fontWeight: 'normal', color: 'var(--accent-green-light)' }}>
-                        {reportResult.photoPoints > 0 ? `${reportResult.photoPoints} pts photo + ` : ''}
-                        {reportResult.reportPoints} pts report
-                        {reportResult.photoPoints > 0 ? ` = ${reportResult.points} total` : ''}
-                      </div>
+                    <div style={{ margin: '12px 0', padding: '12px 16px', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '10px', color: 'var(--accent-green)', fontWeight: 700 }}>
+                      ⭐ You earned +{reportResult.points} Municipal Tax Rebate Points!
                     </div>
                   )}
-                  {reportResult.points === 0 && (
-                    <div style={{ margin: '12px 0', padding: '10px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                      Photo saved! Daily points limit reached — your report still helps!
-                    </div>
-                  )}
-
-                  <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>Report ID: <strong>{reportResult.id}</strong></p>
 
                   <div style={{ marginTop: '20px', display: 'flex', gap: '10px', justifyContent: 'center' }}>
-                    <button type="button" className="btn btn-outline" onClick={() => window.location.reload()}>Upload Another</button>
-                    <button type="button" className="btn btn-primary" onClick={() => window.location.href = '/student'} id="go-to-dashboard">View Progress</button>
+                    <button type="button" className="btn btn-outline" onClick={resetForm}>
+                      Submit Another Report
+                    </button>
+                    <button type="button" className="btn btn-primary" onClick={() => navigate('/citizen')} id="go-to-dashboard">
+                      View in Citizen Dashboard
+                    </button>
                   </div>
                 </>
               )}

@@ -40,7 +40,7 @@ exports.register = async (req, res) => {
     // Insert new user
     const result = await db.query(
       'INSERT INTO users (name, email, phone, password, role) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, email, role',
-      [name, email, phone || null, hashed, role || 'student']
+      [name, email, phone || null, hashed, role || 'citizen']
     );
 
     console.log(`✅ New user registered: ${email}`);
@@ -77,7 +77,7 @@ exports.requestOtp = async (req, res) => {
       // Create new user with phone and OTP
       await db.query(
         'INSERT INTO users (phone, role, otp, otp_expiry, otp_retries) VALUES ($1, $2, $3, $4, 0)',
-        [phone, 'student', otp, expiry]
+        [phone, 'citizen', otp, expiry]
       );
     } else {
       // Update existing user OTP
@@ -178,9 +178,13 @@ exports.login = async (req, res) => {
   try {
     // Demo accounts definitions
     const DEMO_ACCOUNTS = {
-      'admin@campus.edu':       { name: 'Admin Demo',       role: 'admin',       assigned_zone: null },
-      'coordinator@campus.edu': { name: 'Coordinator Demo', role: 'coordinator', assigned_zone: 1 },
-      'student@campus.edu':     { name: 'Student Demo',     role: 'student',     assigned_zone: null },
+      'admin@cleanstate.telangana.gov.in':       { name: 'Urban Directorate Admin',      role: 'admin',       assigned_zone: null },
+      'inspector@cleanstate.telangana.gov.in':   { name: 'K. Rama Rao (Ward Inspector)', role: 'coordinator', assigned_zone: 1 },
+      'citizen@cleanstate.telangana.gov.in':     { name: 'Srinivas Rathna (Citizen)',    role: 'citizen',     assigned_zone: 1 },
+      // Backward-compatible login credentials
+      'admin@campus.edu':       { name: 'Urban Directorate Admin', role: 'admin',       assigned_zone: null },
+      'coordinator@campus.edu': { name: 'Ward Inspector Demo',     role: 'coordinator', assigned_zone: 1 },
+      'student@campus.edu':     { name: 'Citizen Demo',            role: 'citizen',     assigned_zone: 1 },
     };
 
     if (password === 'demo1234' && DEMO_ACCOUNTS[email]) {

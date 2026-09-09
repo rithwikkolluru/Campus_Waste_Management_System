@@ -19,8 +19,8 @@ import './Dashboard.css';
 
 // Telangana State Centers
 const STATE_VIEW_CENTER = [17.8748, 78.1008];
-const JNTUH_CENTER = [17.4920, 78.3910];
-const JNTUH_ZOOM   = 17;
+const STATE_DEFAULT_CENTER = [17.3850, 78.4867]; // Hyderabad Greater Capital Area
+const DEFAULT_MAP_ZOOM = 13;
 
 // District Hotspot Anchors for Telangana GIS overview
 export const DISTRICT_CENTERS = [
@@ -142,14 +142,14 @@ const CampusMapPage = () => {
               {/* Pins / Heatmap toggle */}
               <div className="map-mode-toggle">
                 <button
-                  onClick={() => { setMapMode('pins'); setFlyTo(JNTUH_CENTER); setMapZoom(17); }}
+                  onClick={() => { setMapMode('pins'); setFlyTo(STATE_DEFAULT_CENTER); setMapZoom(DEFAULT_MAP_ZOOM); }}
                   className={mapMode === 'pins' ? 'active' : ''}
                   type="button"
                 >
                   📍 Pins
                 </button>
                 <button
-                  onClick={() => { setMapMode('heatmap'); setFlyTo(JNTUH_CENTER); setMapZoom(17); }}
+                  onClick={() => { setMapMode('heatmap'); setFlyTo(STATE_DEFAULT_CENTER); setMapZoom(DEFAULT_MAP_ZOOM); }}
                   className={mapMode === 'heatmap' ? 'active' : ''}
                   type="button"
                 >
@@ -188,8 +188,8 @@ const CampusMapPage = () => {
           {/* ── Map ──────────────────────────────── */}
           <div className="map-wrapper">
             <MapContainer
-              center={JNTUH_CENTER}
-              zoom={JNTUH_ZOOM}
+              center={STATE_DEFAULT_CENTER}
+              zoom={DEFAULT_MAP_ZOOM}
               style={{ width: '100%', height: '100%', zIndex: 1 }}
               zoomControl={true}
             >

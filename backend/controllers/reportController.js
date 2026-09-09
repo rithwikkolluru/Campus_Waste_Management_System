@@ -13,15 +13,27 @@ const VALID_STATUSES = ['reported', 'under_review', 'assigned', 'in_progress', '
  * Fetch all reports with filtering (priority, status, zone)
  */
 exports.getAllReports = async (req, res) => {
-  const { status, zone, priority } = req.query;
+  const { status, zone, priority, district, ward } = req.query;
 
   let queryText = `
     SELECT r.*,
-           COALESCE(u.name, 'Unknown') AS reporter_name,
-           COALESCE(z.name, 'Unknown') AS zone_name
+           COALESCE(u.name, 'Citizen') AS reporter_name,
+           COALESCE(u.email, '') AS reporter_email,
+           COALESCE(z.name, 'Municipal Circle') AS zone_name,
+           COALESCE(
+             (SELECT rp.file_url FROM report_photos rp WHERE rp.report_id = r.id ORDER BY rp.id ASC LIMIT 1),
+             r.image_url
+           ) AS photo_url,
+           COALESCE(
+             json_agg(
+               json_build_object('id', rp.id, 'url', rp.file_url, 'at', rp.uploaded_at)
+             ) FILTER (WHERE rp.id IS NOT NULL),
+             '[]'
+           ) as photos
     FROM reports r
     LEFT JOIN users u ON r.user_id = u.id
     LEFT JOIN zones z ON r.zone_id = z.id
+    LEFT JOIN report_photos rp ON r.id = rp.report_id
     WHERE 1=1
   `;
   const params = [];
@@ -29,8 +41,10 @@ exports.getAllReports = async (req, res) => {
   if (status) { params.push(status); queryText += ` AND r.status = $${params.length}`; }
   if (zone)   { params.push(zone);   queryText += ` AND z.name ILIKE $${params.length}`; }
   if (priority){ params.push(priority); queryText += ` AND r.priority = $${params.length}`; }
+  if (district){ params.push(district); queryText += ` AND r.district ILIKE $${params.length}`; }
+  if (ward)    { params.push(ward);    queryText += ` AND r.ward_number ILIKE $${params.length}`; }
 
-  queryText += ' ORDER BY r.created_at DESC';
+  queryText += ' GROUP BY r.id, u.name, u.email, z.name ORDER BY r.created_at DESC';
 
   try {
     const result = await db.query(queryText, params);
@@ -49,12 +63,15 @@ exports.getMyReports = async (req, res) => {
   try {
     const queryText = `
       SELECT r.*,
-             COALESCE(z.name, 'Unknown') AS zone_name,
-             (
-               SELECT rp.file_url FROM report_photos rp
-               WHERE rp.report_id = r.id
-               ORDER BY rp.uploaded_at ASC NULLS LAST, rp.id ASC
-               LIMIT 1
+             COALESCE(z.name, 'Municipal Circle') AS zone_name,
+             COALESCE(
+               (
+                 SELECT rp.file_url FROM report_photos rp
+                 WHERE rp.report_id = r.id
+                 ORDER BY rp.uploaded_at ASC NULLS LAST, rp.id ASC
+                 LIMIT 1
+               ),
+               r.image_url
              ) AS photo_url,
              COALESCE(
                json_agg(
@@ -137,7 +154,7 @@ exports.analyzePhoto = async (req, res) => {
 exports.submitReport = async (req, res) => {
   const { 
     latitude, longitude, gps_accuracy, location, waste_type, description, priority, zone_id,
-    state, district, city_municipality, ward_number, pincode, formatted_address
+    state, district, city_municipality, mandal, ward_number, area_locality, landmark, pincode, formatted_address
   } = req.body;
 
   if (!latitude || !longitude) {
@@ -262,8 +279,8 @@ exports.submitReport = async (req, res) => {
         (user_id, zone_id, description, waste_type, priority, status,
          ai_severity, ai_priority, ai_description, location,
          latitude, longitude, location_verified, gps_accuracy, gps_zone_id, zone_report_count,
-         state, district, city_municipality, ward_number, pincode, formatted_address)
-       VALUES ($1, $2, $3, $4, $5, 'reported', $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+         state, district, city_municipality, mandal, ward_number, area_locality, landmark, pincode, formatted_address)
+       VALUES ($1, $2, $3, $4, $5, 'reported', $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
        RETURNING id`,
       [
         userId,
@@ -284,7 +301,10 @@ exports.submitReport = async (req, res) => {
         state || 'Telangana',
         district || 'Hyderabad',
         city_municipality || 'Greater Hyderabad Municipal Corporation',
+        mandal || null,
         ward_number || null,
+        area_locality || null,
+        landmark || null,
         pincode || null,
         formatted_address || location || null
       ]
@@ -366,10 +386,10 @@ exports.submitReport = async (req, res) => {
     await createNotification(
       userId,
       'report_submitted',
-      'Report Submitted ✅',
+      'Civic Report Submitted ✅',
       totalPointsEarned > 0
-        ? `Your waste report was saved. You earned +${totalPointsEarned} points!`
-        : 'Your waste report was saved successfully.',
+        ? `Your civic cleanliness report was logged. You earned +${totalPointsEarned} points towards municipal rewards!`
+        : 'Your civic cleanliness report was saved successfully.',
       { reportId, photoUrl, pointsEarned: totalPointsEarned },
       dbClient
     );

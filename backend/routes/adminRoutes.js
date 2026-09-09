@@ -15,7 +15,7 @@ const fetchWeekData = async () => {
   const [reportsRes, byTypeRes, byZoneRes] = await Promise.all([
     pool.query(
       `SELECT r.id, r.status, r.waste_type, r.ai_severity, r.ai_priority,
-              r.created_at, z.name AS zone_name, u.name AS student_name
+              r.created_at, z.name AS zone_name, u.name AS citizen_name, u.name AS student_name
        FROM reports r
        LEFT JOIN zones z ON r.zone_id = z.id
        LEFT JOIN users u ON r.user_id = u.id
@@ -73,9 +73,17 @@ router.get('/reports', authenticate, requireAdmin, async (req, res) => {
       SELECT
         r.id, r.location, r.waste_type, r.description,
         r.status, r.created_at, r.priority, r.zone_id,
+        r.latitude, r.longitude, r.gps_accuracy, r.image_url,
+        r.state, r.district, r.city_municipality, r.mandal, r.ward_number,
+        r.area_locality, r.landmark, r.formatted_address,
         r.ai_severity, r.ai_priority, r.ai_description,
-        u.name as student_name, u.email as student_email,
-        COALESCE(z.name, 'Unknown') AS zone_name,
+        u.name as citizen_name, u.name as student_name,
+        u.email as citizen_email, u.email as student_email,
+        COALESCE(z.name, 'Municipal Division') AS zone_name,
+        COALESCE(
+          (SELECT rp.file_url FROM report_photos rp WHERE rp.report_id = r.id ORDER BY rp.id ASC LIMIT 1),
+          r.image_url
+        ) AS photo_url,
         COALESCE(
           json_agg(
             json_build_object(
@@ -274,6 +282,38 @@ router.get('/statewide-stats', authenticate, requireAdmin, async (req, res) => {
   } catch (err) {
     console.error('Statewide stats error:', err.message);
     res.status(500).json({ error: 'Failed to fetch statewide analytics' });
+  }
+});
+
+// ── Location Management Endpoints ──────────────────────────────────────────
+router.post('/districts', authenticate, requireAdmin, async (req, res) => {
+  const { name, code, state = 'Telangana' } = req.body;
+  if (!name) return res.status(400).json({ error: 'District name is required' });
+  try {
+    const result = await pool.query(
+      `INSERT INTO districts (name, state, code) VALUES ($1, $2, $3) RETURNING *`,
+      [name, state, code || name.substring(0, 3).toUpperCase()]
+    );
+    res.json({ success: true, district: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/wards', authenticate, requireAdmin, async (req, res) => {
+  const { district_id } = req.query;
+  try {
+    let q = 'SELECT * FROM municipal_wards';
+    const params = [];
+    if (district_id) {
+      params.push(district_id);
+      q += ' WHERE district_id = $1';
+    }
+    q += ' ORDER BY ward_number ASC';
+    const result = await pool.query(q, params);
+    res.json({ success: true, wards: result.rows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

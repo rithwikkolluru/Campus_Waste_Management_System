@@ -16,27 +16,29 @@ export default function LoginPage() {
     setLoadingRole(role);
 
     const credentials = {
-      student: { email: 'student@campus.edu', password: 'demo1234' },
-      coordinator: { email: 'coordinator@campus.edu', password: 'demo1234' },
-      admin: { email: 'admin@campus.edu', password: 'demo1234' },
+      citizen: { email: 'citizen@cleanstate.telangana.gov.in', password: 'demo1234' },
+      student: { email: 'citizen@cleanstate.telangana.gov.in', password: 'demo1234' },
+      coordinator: { email: 'inspector@cleanstate.telangana.gov.in', password: 'demo1234' },
+      admin: { email: 'admin@cleanstate.telangana.gov.in', password: 'demo1234' },
     };
 
     const target = credentials[role];
     if (!target) return;
 
-    // Direct background staff login
+    // Direct background staff/citizen login
     const result = await loginStaff(target.email, target.password);
     
     if (result.success) {
       const paths = { 
-        student: '/student',
+        citizen: '/citizen',
+        student: '/citizen',
         coordinator: '/coordinator', 
         admin: '/admin' 
       };
       // Delay navigation slightly to let the loading animation look polished
       setTimeout(() => {
         setLoadingRole(null);
-        navigate(paths[result.role] || '/student');
+        navigate(paths[result.role] || '/citizen');
       }, 600);
     } else {
       setLoadingRole(null);

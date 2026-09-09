@@ -15,6 +15,7 @@ import 'leaflet/dist/leaflet.css';
 import './Dashboard.css';
 import VoiceAssistantButton from '../components/VoiceAssistantButton';
 import StaffNavigationModal from '../components/StaffNavigationModal';
+import SafeImage from '../components/SafeImage';
 import { generateReportAnnouncement, generateBinAnnouncement } from '../utils/voiceAssistant';
 
 // Leaflet marker icons workaround for Vite/Webpack
@@ -325,7 +326,7 @@ export default function CoordinatorDashboard() {
           type: 'success',
           title: action === 'approve' ? 'Cleanup Approved' : 'Cleanup Rejected',
           message: action === 'approve'
-            ? `Report #${reportId} verified. +15 XP awarded to student.`
+            ? `Report #${reportId} verified. +15 XP awarded to citizen.`
             : `Report #${reportId} sent back for re-submission.`,
         });
       } else {
@@ -691,7 +692,7 @@ export default function CoordinatorDashboard() {
               <span className="text-sm text-muted">{reports.length} Reports Found</span>
             </div>
             
-            <div style={{ overflowX: 'auto' }}>
+            <div className="table-scroll-wrapper">
               <table className="data-table">
                 <thead>
                   <tr>
@@ -712,22 +713,21 @@ export default function CoordinatorDashboard() {
                     <tr key={r.id}>
                       <td>#{r.id}</td>
                       <td>
-                        {r.photos && r.photos[0] ? (
-                          <img 
-                            src={`${API_BASE}${r.photos[0].url}`} 
-                            alt="garbage" 
-                            style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px', border: '1px solid var(--glass-border)' }}
-                          />
-                        ) : (
-                          <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>No Photo</span>
-                        )}
+                        <SafeImage
+                          src={r.photo_url || (r.photos && r.photos[0] ? r.photos[0].url : null) || r.image_url}
+                          alt="garbage"
+                          style={{ width: '40px', height: '40px', borderRadius: '4px' }}
+                          category={r.waste_type}
+                          location={`${r.district || 'Telangana'}, ${r.ward_number || r.zone_name || 'Ward'}`}
+                          date={new Date(r.created_at).toLocaleDateString()}
+                        />
                       </td>
                       <td>
                         <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#38bdf8' }}>📍 {r.district || 'Hyderabad'}</div>
                         <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{r.ward_number || r.zone_name || 'Ward 1'}</div>
                       </td>
                       <td>
-                        <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{r.reporter_name}</div>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{r.reporter_name || r.citizen_name || 'Citizen'}</div>
                         <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{r.reporter_email}</div>
                       </td>
                       <td>{r.waste_type}</td>
@@ -858,16 +858,14 @@ export default function CoordinatorDashboard() {
                   <div className="verification-photos">
                     {/* Before Photo */}
                     <div className="photo-panel">
-                      <div className="photo-label">📸 Before (Student Report)</div>
-                      {r.photos && r.photos[0] ? (
-                        <img 
-                          src={`${API_BASE}${r.photos[0].url}`} 
-                          alt="Before" 
-                          className="verification-img" 
-                        />
-                      ) : (
-                        <div className="no-photo">No before photo available</div>
-                      )}
+                      <div className="photo-label">📸 Before (Citizen Report)</div>
+                      <SafeImage
+                        src={r.photo_url || (r.photos && r.photos[0] ? r.photos[0].url : null) || r.image_url}
+                        alt="Before"
+                        className="verification-img"
+                        category={r.waste_type}
+                        location={`${r.district || 'Telangana'}, ${r.zone_name || 'Ward'}`}
+                      />
                     </div>
 
                     {/* After Photo Upload */}

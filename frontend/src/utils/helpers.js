@@ -1,6 +1,48 @@
+import { API_BASE_URL } from '../config';
+
 /**
  * helpers.js – General utility functions used across the frontend
  */
+
+/**
+ * Resolves any image URL or file path cleanly across local & production.
+ * - Fixes local Windows paths (C:\... or c__Users...)
+ * - Fixes hardcoded localhost URLs in production
+ * - Prepends API_BASE_URL when necessary
+ * - Handles data URIs and blob URLs
+ */
+export function getMediaUrl(url) {
+  if (!url || typeof url !== 'string') return null;
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+
+  if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
+    return trimmed;
+  }
+
+  // Normalize backslashes to forward slashes
+  let normalized = trimmed.replace(/\\/g, '/');
+
+  // If URL contains /uploads/, extract everything from /uploads/
+  const uploadsIndex = normalized.indexOf('/uploads/');
+  if (uploadsIndex !== -1) {
+    const relativePath = normalized.substring(uploadsIndex);
+    return API_BASE_URL ? `${API_BASE_URL}${relativePath}` : relativePath;
+  }
+
+  // If it's an external URL
+  if (normalized.startsWith('http://') || normalized.startsWith('https://')) {
+    if (normalized.includes('localhost:8000') || normalized.includes('localhost:3000') || normalized.includes('localhost:5000')) {
+      const pathPart = normalized.replace(/^https?:\/\/[^/]+/, '');
+      return API_BASE_URL ? `${API_BASE_URL}${pathPart}` : pathPart;
+    }
+    return normalized;
+  }
+
+  // Relative path
+  const cleanPath = normalized.startsWith('/') ? normalized : `/${normalized}`;
+  return API_BASE_URL ? `${API_BASE_URL}${cleanPath}` : cleanPath;
+}
 
 // ── Date / Time ──────────────────────────────────────────────────────────────
 /**

@@ -11,6 +11,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import usePoints from '../hooks/usePoints';
 import NotificationBell from '../components/NotificationBell';
+import SafeImage from '../components/SafeImage';
 import './Dashboard.css';
 
 
@@ -255,13 +256,14 @@ export default function StudentDashboard() {
                 <div className="report-mini-card">
                   <div className="flex justify-between items-center gap-3">
                     <div className="flex items-center gap-3">
-                      {latestReport.photoUrl ? (
-                        <img src={latestReport.photoUrl} alt="Report" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--glass-border)' }} />
-                      ) : (
-                        <div style={{ width: 40, height: 40, borderRadius: 6, background: 'var(--bg-card)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--glass-border)' }}>
-                          <ImageOff size={16} color="var(--text-muted)" />
-                        </div>
-                      )}
+                      <SafeImage
+                        src={latestReport.photoUrl}
+                        alt="Report"
+                        style={{ width: 40, height: 40, borderRadius: 6 }}
+                        category={latestReport.type}
+                        location={latestReport.zone}
+                        date={latestReport.date}
+                      />
                       <span className="font-semibold">{latestReport.id}</span>
                     </div>
                     <span className={`badge ${PRIORITY_COLOR[latestReport.priority]}`}>{latestReport.priority}</span>
@@ -354,7 +356,7 @@ export default function StudentDashboard() {
               </select>
             </div>
           </div>
-          <div style={{ overflowX: 'auto' }}>
+          <div className="table-scroll-wrapper">
             <table className="data-table">
               <thead>
                 <tr>
@@ -368,21 +370,14 @@ export default function StudentDashboard() {
                   <tr key={r.id}>
                     <td>{r.id}</td>
                     <td>
-                      {r.photoUrl ? (
-                        <img
-                          src={r.photoUrl}
-                          alt="Upload"
-                          style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4, border: '1px solid var(--glass-border)' }}
-                        />
-                      ) : (
-                        <div style={{
-                          width: 40, height: 40, borderRadius: 4, background: 'var(--bg-card)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          border: '1px solid var(--glass-border)',
-                        }}>
-                          <ImageOff size={16} color="var(--text-muted)" />
-                        </div>
-                      )}
+                      <SafeImage
+                        src={r.photoUrl}
+                        alt="Upload"
+                        style={{ width: 40, height: 40, borderRadius: 4 }}
+                        category={r.type}
+                        location={`${r.district || 'Telangana'}, ${r.ward || r.zone}`}
+                        date={r.date}
+                      />
                     </td>
                     <td>
                       <div style={{ fontWeight: 600 }}>📍 {r.district || 'Hyderabad'}</div>

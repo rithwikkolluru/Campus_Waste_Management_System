@@ -74,8 +74,9 @@ router.get('/reports', authenticate, requireCoordinator, async (req, res) => {
 
     const result = await pool.query(`
       SELECT r.id, r.description, r.waste_type, r.priority, r.status,
-             r.latitude, r.longitude,
-             r.state, r.district, r.city_municipality, r.ward_number, r.pincode, r.formatted_address,
+             r.latitude, r.longitude, r.gps_accuracy, r.image_url,
+             r.state, r.district, r.city_municipality, r.mandal, r.ward_number,
+             r.area_locality, r.landmark, r.pincode, r.formatted_address,
              r.created_at, r.updated_at, r.sla_deadline,
              r.verified_photo_url, r.verified_at,
              r.ai_severity, r.ai_priority, r.ai_description,
@@ -83,6 +84,10 @@ router.get('/reports', authenticate, requireCoordinator, async (req, res) => {
              z.name as zone_name,
              a.staff_id as assigned_worker_id,
              wu.name as assigned_worker_name,
+             COALESCE(
+               (SELECT rp.file_url FROM report_photos rp WHERE rp.report_id = r.id ORDER BY rp.id ASC LIMIT 1),
+               r.image_url
+             ) as photo_url,
              COALESCE(
                json_agg(
                  json_build_object('id', rp.id, 'url', rp.file_url)
@@ -200,11 +205,11 @@ router.patch('/status/:reportId', authenticate, requireCoordinator, async (req, 
 
     const locationLabel = location || description || 'your report';
     const statusMessages = {
-      under_review: `Your report #${reportId} is now under review.`,
-      assigned: `Your report #${reportId} has been assigned to cleaning staff.`,
-      in_progress: `Your report #${reportId} is now in progress.`,
-      resolved: `Your report #${reportId} has been resolved. Thank you for helping keep campus clean!`,
-      reported: `Your report #${reportId} status was updated to reported.`,
+      under_review: `Your civic report #${reportId} is now under review by the Ward Inspector.`,
+      assigned: `Your civic report #${reportId} has been assigned to the municipal sanitation fleet.`,
+      in_progress: `Sanitation cleaning is now in progress for report #${reportId}.`,
+      resolved: `Your civic report #${reportId} has been resolved. Thank you for keeping Telangana clean and green!`,
+      reported: `Your civic report #${reportId} status was updated to reported.`,
     };
     if (reporterId && statusMessages[status]) {
       await notificationService.notifyStatusUpdate(

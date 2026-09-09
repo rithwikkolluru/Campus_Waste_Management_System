@@ -3,10 +3,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Recycle, User, Mail, Lock, Eye, EyeOff, ArrowRight, Phone, BookOpen } from 'lucide-react';
 import './AuthPages.css';
 
-const ZONES = ['Hostel Area', 'Academic Block', 'Library', 'Canteen', 'Parking Area'];
+const ZONES = ['GHMC Central Circle', 'Secunderabad & Malkajgiri', 'Cyberabad IT Corridor', 'Warangal Urban Corporation', 'Nizamabad Municipal Circle', 'Karimnagar Smart District'];
 
 export default function RegisterPage() {
-  const [form, setForm] = useState({ name: '', email: '', phone: '', zone: '', role: 'student', password: '', confirm: '' });
+  const [form, setForm] = useState({ name: '', email: '', phone: '', zone: '', role: 'citizen', password: '', confirm: '' });
   const [showPwd, setShowPwd]   = useState(false);
   const [errors, setErrors]     = useState({});
   const [loading, setLoading]   = useState(false);

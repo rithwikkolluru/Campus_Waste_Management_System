@@ -9,6 +9,7 @@ import {
 } from 'chart.js';
 import { Doughnut, Bar } from 'react-chartjs-2';
 import { Sparkles, RefreshCw, TrendingUp, TrendingDown, Minus, Download, Building2, MapPin, Award, CheckCircle2, AlertCircle, FileSpreadsheet, Layers, ShieldCheck } from 'lucide-react';
+import SafeImage from '../components/SafeImage';
 import './Dashboard.css';
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title);
@@ -82,8 +83,8 @@ export default function AdminDashboard() {
           ...r,
           dbId:     r.id,
           id:       `RPT-00${r.id}`,
-          reporter: r.student_name,
-          zone:     r.zone_name || r.location || 'Campus',
+          reporter: r.citizen_name || r.student_name || 'Citizen',
+          zone:     r.zone_name || r.location || 'Civic Ward',
           zoneId:   r.zone_id,
           district: r.district || 'Hyderabad',
           state:    r.state || 'Telangana',
@@ -94,7 +95,7 @@ export default function AdminDashboard() {
           date:     new Date(r.created_at).toLocaleDateString(),
           rawStatus: r.status,
           status:   formatDisplayStatus(r.status),
-          photoUrl: r.photos?.length > 0 ? `${API_BASE_URL}${r.photos[0].url}` : null,
+          photoUrl: r.photo_url || (r.photos?.length > 0 ? r.photos[0].url : null) || r.image_url,
           aiWasteType:  r.photos?.[0]?.ai_waste_type  || r.waste_type || null,
           aiBinColor:   r.photos?.[0]?.ai_bin_color   || null,
           aiSeverity:   r.ai_severity,
@@ -514,7 +515,7 @@ export default function AdminDashboard() {
                 {STATUS_FLOW.map(s => <option key={s}>{s}</option>)}
               </select>
             </div>
-            <div style={{ overflowX: 'auto' }}>
+            <div className="table-scroll-wrapper">
               <table className="data-table">
                 <thead>
                   <tr>
@@ -528,13 +529,14 @@ export default function AdminDashboard() {
                     <tr key={r.id}>
                       <td style={{ fontFamily: 'monospace', fontSize: '0.78rem' }}>{r.id}</td>
                       <td>
-                        {r.photoUrl ? (
-                          <a href={r.photoUrl} target="_blank" rel="noreferrer">
-                            <img src={r.photoUrl} alt="Waste" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '5px', border: '1px solid var(--glass-border)' }} />
-                          </a>
-                        ) : (
-                          <div style={{ width: '40px', height: '40px', borderRadius: '5px', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', color: 'var(--text-muted)' }}>No photo</div>
-                        )}
+                        <SafeImage
+                          src={r.photoUrl}
+                          alt="Waste"
+                          style={{ width: '40px', height: '40px', borderRadius: '5px' }}
+                          category={r.aiWasteType || r.type}
+                          location={`${r.district || 'Telangana'}, ${r.zone}`}
+                          date={r.date}
+                        />
                       </td>
                       <td>{r.reporter}</td>
                       <td>📍 {r.zone}</td>
@@ -594,7 +596,7 @@ export default function AdminDashboard() {
               <h3 className="text-lg font-semibold">Registered Users</h3>
               <span className="badge badge-green">{users.length} Total</span>
             </div>
-            <div style={{ overflowX: 'auto' }}>
+            <div className="table-scroll-wrapper">
               <table className="data-table">
                 <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Points</th><th>Zone</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead>
                 <tbody>

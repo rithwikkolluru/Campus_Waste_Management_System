@@ -16,12 +16,17 @@ app.use(express.json());
 app.use(xssCleaner);
 app.use(morgan('dev'));
 
-// Static folder for uploaded garbage images
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Static folder for uploaded garbage images with Cross-Origin Resource Policy
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+  setHeaders: (res) => {
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.set('Access-Control-Allow-Origin', '*');
+  }
+}));
 
 // Health check route
 app.get('/health', (req, res) => {
-  res.json({ status: 'OK', message: 'EcoCampus API is live!' });
+  res.json({ status: 'OK', message: 'CleanState AI Telangana Civic Platform API is live!' });
 });
 
 // Route Imports
@@ -58,5 +63,5 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`EcoCampus Backend listening on http://localhost:${PORT}`);
+  console.log(`CleanState AI Telangana Civic Backend listening on port ${PORT}`);
 });
