@@ -189,3 +189,22 @@
     border-right-color: var(--border);
   }
 }
+
+/* Keep the action links comfortable to use on narrow screens. */
+@media (max-width: 600px) {
+  #center {
+    padding-inline: 16px;
+  }
+
+  #next-steps > div {
+    padding: 20px 16px;
+  }
+
+  #next-steps ul li {
+    flex-basis: 100%;
+  }
+
+  #next-steps ul a {
+    min-height: 44px;
+  }
+}
