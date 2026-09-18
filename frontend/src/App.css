@@ -5,11 +5,13 @@
   color: var(--accent);
   background: var(--accent-bg);
   border: 2px solid transparent;
-  transition: border-color 0.3s;
+  transition: border-color 0.3s, transform 0.3s, box-shadow 0.3s;
   margin-bottom: 24px;
 
   &:hover {
     border-color: var(--accent-border);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 18px rgb(0 0 0 / 12%);
   }
   &:focus-visible {
     outline: 2px solid var(--accent);
@@ -125,10 +127,15 @@
     align-items: center;
     gap: 8px;
     text-decoration: none;
-    transition: box-shadow 0.3s;
+    transition: box-shadow 0.3s, transform 0.3s;
 
     &:hover {
       box-shadow: var(--shadow);
+      transform: translateY(-2px);
+    }
+    &:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 3px;
     }
     .button-icon {
       height: 18px;
